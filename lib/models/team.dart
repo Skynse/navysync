@@ -4,7 +4,7 @@ class Team {
   final String id;
   final String name;
   final String description;
-  final String imageUrl; // use firebase to store
+
   final String teamLeaderId;
   final List<String> members;
 
@@ -12,7 +12,7 @@ class Team {
     required this.id,
     required this.name,
     required this.description,
-    required this.imageUrl,
+
     required this.teamLeaderId,
     required this.members,
   });
@@ -23,7 +23,7 @@ class Team {
       id: doc.id,
       name: data['name'] ?? '',
       description: data['description'] ?? '',
-      imageUrl: data['imageUrl'] ?? '',
+  
       teamLeaderId: data['teamLeaderId'] ?? '',
       members: List<String>.from(data['members'] ?? []),
     );
@@ -33,7 +33,7 @@ class Team {
     return {
       'name': name,
       'description': description,
-      'imageUrl': imageUrl,
+
       'teamLeaderId': teamLeaderId,
       'members': members,
     };
