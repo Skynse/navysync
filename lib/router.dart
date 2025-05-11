@@ -5,7 +5,6 @@ import 'package:navysync/pages/profile.dart';
 import 'package:navysync/pages/tasks.dart';
 import 'package:navysync/pages/teams.dart';
 
-
 final router = GoRouter(
   initialLocation: '/home',
 
@@ -24,7 +23,19 @@ final router = GoRouter(
 
         StatefulShellBranch(
           routes: [
-            GoRoute(path: '/teams', builder: (context, state) => TeamsView()),
+            GoRoute(
+              path: '/teams',
+              builder: (context, state) => TeamsView(),
+              routes: [
+                GoRoute(
+                  path: ':teamId',
+                  builder: (context, state) {
+                    final teamId = state.pathParameters['teamId']!;
+                    return TeamDetailsView(teamId: teamId);
+                  },
+                ),
+              ],
+            ),
           ],
         ),
         StatefulShellBranch(
@@ -34,9 +45,10 @@ final router = GoRouter(
         ),
         StatefulShellBranch(
           routes: [
-            GoRoute(path: '/profile', builder: (context, state) => ProfilePage()
-            
-            ,),
+            GoRoute(
+              path: '/profile',
+              builder: (context, state) => ProfilePage(),
+            ),
           ],
         ),
       ],
@@ -75,7 +87,7 @@ class _ScaffoldWithNestedNavigationState
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
             BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Teams'),
             BottomNavigationBarItem(icon: Icon(Icons.task), label: "Tasks"),
-             BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
           ],
           selectedItemColor: Colors.black,
           unselectedItemColor: Colors.grey,
