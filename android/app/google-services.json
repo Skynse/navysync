@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "582606526370",
+    "project_id": "navysync-a8d94",
+    "storage_bucket": "navysync-a8d94.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:582606526370:android:4d76511c6f04714ec284fb",
+        "android_client_info": {
+          "package_name": "com.example.navysync"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyACarPM_witf4AFBG_3u3dthlN2i5mn-HA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

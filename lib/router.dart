@@ -1,14 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:navysync/pages/auth/auth_gate.dart';
+import 'package:navysync/pages/auth/authentication_page.dart';
 import 'package:navysync/pages/home_page.dart';
 import 'package:navysync/pages/profile.dart';
 import 'package:navysync/pages/tasks.dart';
 import 'package:navysync/pages/teams.dart';
 
 final router = GoRouter(
-  initialLocation: '/home',
+  initialLocation: '/auth_gate',
 
   routes: [
+    GoRoute(
+      path: '/auth_gate',
+      builder: (context, state) {
+        // This is where you would check if the user is authenticated
+        // and redirect accordingly. For now, we just return HomeScreen.
+        return AuthGate();
+      },
+    ),
+
+    GoRoute(
+      path: '/authentication',
+      builder: (context, state) {
+        // This is where you would show the authentication page
+        return const AuthenticationPage();
+      },
+    ),
+
     StatefulShellRoute.indexedStack(
       builder:
           (context, state, navigationShell) =>
