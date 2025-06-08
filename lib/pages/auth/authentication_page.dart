@@ -1,8 +1,10 @@
 import 'dart:math';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
+import 'package:navysync/models/user.dart';
 
 class AuthenticationPage extends StatefulWidget {
   const AuthenticationPage({super.key});
@@ -42,11 +44,16 @@ class _AuthenticationPageState extends State<AuthenticationPage>
 
   Widget _buildTabBar() {
     return TabBar(
+      dividerColor: Colors.transparent,
       controller: _tabController,
       tabs: const [Tab(text: 'Login'), Tab(text: 'Register')],
       indicatorColor: Colors.blue,
       labelColor: Colors.blue,
       unselectedLabelColor: Colors.grey,
+      indicator: UnderlineTabIndicator(
+        borderRadius: BorderRadius.all(Radius.circular(50.0)),
+        borderSide: BorderSide(width: 3.0, color: Colors.blue),
+      ),
     );
   }
 
@@ -85,12 +92,13 @@ class _AuthenticationPageState extends State<AuthenticationPage>
               ),
               TextFormField(
                 controller: passwordController,
+                obscureText: true,
                 decoration: InputDecoration(
                   hint: Text(
                     'Password',
                     style: TextStyle(color: Colors.grey.shade600),
                   ),
-                  prefixIcon: Icon(Icons.email, color: Colors.grey.shade600),
+                  prefixIcon: Icon(Icons.lock, color: Colors.grey.shade600),
                   border: InputBorder.none,
                   fillColor: Colors.grey.shade200,
                   filled: true,
@@ -107,18 +115,20 @@ class _AuthenticationPageState extends State<AuthenticationPage>
                   ),
                 ),
               ),
-              SizedBox(height: 16),
+              SizedBox(height: 24),
               ElevatedButton(
-                style: ButtonStyle(
-                  fixedSize: WidgetStateProperty.all(Size(200, 50)),
-                  shape: WidgetStateProperty.all(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(
+                    MediaQuery.of(context).size.width * 0.9,
+                    50,
                   ),
-                  backgroundColor: WidgetStateProperty.all(Color(0XFF000080)),
+                  backgroundColor: Color(0xFF000080),
+                  foregroundColor: Color(0xFFE89C31),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 3,
                 ),
-
                 onPressed: () async {
                   try {
                     await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -134,11 +144,7 @@ class _AuthenticationPageState extends State<AuthenticationPage>
                 },
                 child: const Text(
                   'Login',
-
-                  style: TextStyle(
-                    color: Color(0XFFe89c31),
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                 ),
               ),
             ],
@@ -254,6 +260,9 @@ class _AuthenticationPageState extends State<AuthenticationPage>
               SizedBox(height: 16),
               ElevatedButton(
                 style: ButtonStyle(
+                  minimumSize: WidgetStateProperty.all(
+                    Size(MediaQuery.of(context).size.width * 0.9, 50),
+                  ),
                   fixedSize: WidgetStateProperty.all(Size(200, 50)),
                   shape: WidgetStateProperty.all(
                     RoundedRectangleBorder(
@@ -273,7 +282,31 @@ class _AuthenticationPageState extends State<AuthenticationPage>
                           .createUserWithEmailAndPassword(
                             email: registerEmailController.text,
                             password: registerPasswordController.text,
-                          );
+                          )
+                          .then((UserCredential userCredential) async {
+                            if (userCredential.user == null) {
+                              return;
+                            }
+                            FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(userCredential.user!.uid)
+                                .set(
+                                  NavySyncUser(
+                                    id: userCredential.user!.uid,
+                                    profilePictureUrl: '',
+                                    name: 'User',
+                                    role: 'unassigned',
+                                  ).toMap(),
+                                )
+                                .then((_) {
+                                  print('User profile created in Firestore');
+                                })
+                                .catchError((error) {
+                                  print(
+                                    'Failed to create user profile: $error',
+                                  );
+                                });
+                          });
 
                       if (context.mounted) {
                         context.go('/auth_gate');
@@ -305,9 +338,14 @@ class _AuthenticationPageState extends State<AuthenticationPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Column(
           children: [
+            Container(
+              height: 0.25 * MediaQuery.sizeOf(context).height,
+              color: Colors.red,
+            ),
             _buildTabBar(),
             Expanded(
               child: Padding(
