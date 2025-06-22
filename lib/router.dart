@@ -5,6 +5,7 @@ import 'package:navysync/pages/auth/authentication_page.dart';
 import 'package:navysync/pages/home_page.dart';
 import 'package:navysync/pages/profile.dart';
 import 'package:navysync/pages/tasks.dart';
+import 'package:navysync/pages/team_details_view.dart';
 import 'package:navysync/pages/teams.dart';
 
 final router = GoRouter(
@@ -46,6 +47,10 @@ final router = GoRouter(
               path: '/teams',
               builder: (context, state) => TeamsView(),
               routes: [
+                GoRoute(
+                  path: 'create',
+                  builder: (context, state) => const TeamCreateView(),
+                ),
                 GoRoute(
                   path: ':teamId',
                   builder: (context, state) {

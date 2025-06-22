@@ -20,6 +20,10 @@ class _HomeScreenState extends State<HomeScreen> {
       date: DateTime.now().add(Duration(days: 1, hours: 2)),
       location: "Admiral's Conference Room",
       creatorId: "12345",
+      event_type: "organization",
+      visibility: "public",
+      attendees: ["12345", "67890", "11223", "44556"],
+      departmentId: "dept001", // Optional, can be empty if not applicable
     ),
     Event(
       id: "2",
@@ -29,6 +33,8 @@ class _HomeScreenState extends State<HomeScreen> {
       date: DateTime.now().add(Duration(days: 2)),
       location: "Simulation Center B",
       creatorId: "12345",
+      event_type: "departmental",
+      departmentId: "dept001",
     ),
     Event(
       id: "3",
@@ -38,6 +44,8 @@ class _HomeScreenState extends State<HomeScreen> {
       date: DateTime.now().add(Duration(days: 3, hours: 4)),
       location: "Engineering Bay",
       creatorId: "12345",
+      event_type: "team",
+      teamId: "team001",
     ),
     Event(
       id: "4",
@@ -46,6 +54,9 @@ class _HomeScreenState extends State<HomeScreen> {
       date: DateTime.now().add(Duration(days: 5)),
       location: "Training Center A",
       creatorId: "12345",
+      event_type: "organization",
+      visibility: "public",
+      attendees: ["12345", "67890", "11223"],
     ),
   ];
   Widget _buildEventCard(Event event) {
