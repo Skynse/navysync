@@ -58,24 +58,59 @@ class _AuthenticationPageState extends State<AuthenticationPage>
   }
 
   // LINE 43 - 140
+  bool _isPasswordVisible = false;
+  bool _isLoading = false;
+  String? _loginErrorMessage;
+
   Widget _buildLoginTab() {
     return Center(
       child: Container(
         child: Form(
           child: Column(
-            spacing: 16,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              if (_loginErrorMessage != null)
+                Container(
+                  margin: EdgeInsets.only(bottom: 16),
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline, color: Colors.red),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _loginErrorMessage!,
+                          style: TextStyle(color: Colors.red.shade800),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close, size: 16),
+                        color: Colors.red.shade800,
+                        onPressed: () {
+                          setState(() {
+                            _loginErrorMessage = null;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
               TextFormField(
                 controller: emailController,
+                keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
-                  hint: Text(
-                    'Email',
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
+                  labelText: 'Email',
+                  hintText: 'Enter your email',
                   prefixIcon: Icon(Icons.email, color: Colors.grey.shade600),
-                  border: InputBorder.none,
-                  fillColor: Colors.grey.shade200,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  fillColor: Colors.grey.shade100,
                   filled: true,
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -86,21 +121,35 @@ class _AuthenticationPageState extends State<AuthenticationPage>
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: Colors.blue, width: 2),
+                    borderSide: BorderSide(color: Color(0xFF000080), width: 2),
                   ),
                 ),
               ),
+              SizedBox(height: 16),
               TextFormField(
                 controller: passwordController,
-                obscureText: true,
+                obscureText: !_isPasswordVisible,
                 decoration: InputDecoration(
-                  hint: Text(
-                    'Password',
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
+                  labelText: 'Password',
+                  hintText: 'Enter your password',
                   prefixIcon: Icon(Icons.lock, color: Colors.grey.shade600),
-                  border: InputBorder.none,
-                  fillColor: Colors.grey.shade200,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                      color: Colors.grey.shade600,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordVisible = !_isPasswordVisible;
+                      });
+                    },
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  fillColor: Colors.grey.shade100,
                   filled: true,
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -111,7 +160,91 @@ class _AuthenticationPageState extends State<AuthenticationPage>
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: Colors.blue, width: 2),
+                    borderSide: BorderSide(color: Color(0xFF000080), width: 2),
+                  ),
+                ),
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    // Password recovery logic
+                    // Show dialog to enter email
+                    showDialog(
+                      context: context,
+                      builder:
+                          (context) => AlertDialog(
+                            title: Text('Reset Password'),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Enter your email to receive a reset link',
+                                ),
+                                SizedBox(height: 16),
+                                TextFormField(
+                                  controller: TextEditingController(
+                                    text: emailController.text,
+                                  ),
+                                  decoration: InputDecoration(
+                                    labelText: 'Email',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text('Cancel'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  // Send password reset email
+                                  Navigator.pop(context);
+                                  try {
+                                    await FirebaseAuth.instance
+                                        .sendPasswordResetEmail(
+                                          email: emailController.text,
+                                        );
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Password reset link sent to ${emailController.text}',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } catch (error) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Failed to send reset link: $error',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Color(0xFF000080),
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: Text('Send Reset Link'),
+                              ),
+                            ],
+                          ),
+                    );
+                  },
+                  child: Text(
+                    'Forgot Password?',
+                    style: TextStyle(color: Color(0xFF000080)),
                   ),
                 ),
               ),
@@ -129,23 +262,134 @@ class _AuthenticationPageState extends State<AuthenticationPage>
                   ),
                   elevation: 3,
                 ),
-                onPressed: () async {
-                  try {
-                    await FirebaseAuth.instance.signInWithEmailAndPassword(
-                      email: emailController.text,
-                      password: passwordController.text,
-                    );
-                  } catch (e) {
-                    // Handle login error
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text('Login failed: $e')));
-                  }
-                },
-                child: const Text(
-                  'Login',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                ),
+                onPressed:
+                    _isLoading
+                        ? null
+                        : () async {
+                          if (emailController.text.isEmpty ||
+                              passwordController.text.isEmpty) {
+                            setState(() {
+                              _loginErrorMessage =
+                                  'Please enter both email and password';
+                            });
+                            return;
+                          }
+
+                          setState(() {
+                            _isLoading = true;
+                            _loginErrorMessage = null;
+                          });
+
+                          try {
+                            await FirebaseAuth.instance
+                                .signInWithEmailAndPassword(
+                                  email: emailController.text,
+                                  password: passwordController.text,
+                                );
+                          } catch (e) {
+                            setState(() {
+                              _loginErrorMessage = _getFirebaseErrorMessage(
+                                e.toString(),
+                              );
+                            });
+                          } finally {
+                            // Check if the user is authenticated
+                            User? user = FirebaseAuth.instance.currentUser;
+                            if (user != null && user.emailVerified) {
+                              // User is authenticated, navigate to auth gate
+                              if (context.mounted) {
+                                context.go('/auth_gate');
+                              }
+                            } else {
+                              if (!user!.emailVerified) {
+                                // User is authenticated but not verified, show error
+                                setState(() {
+                                  _loginErrorMessage =
+                                      'Please verify your email before logging in.';
+                                });
+
+                                showDialog(
+                                  context: context,
+                                  builder: (context) {
+                                    return AlertDialog(
+                                      title: Text("Send Verification Email"),
+                                      content: Text(
+                                        "Your email is not verified. Would you like to send a verification email?",
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          child: Text("Send"),
+                                          onPressed: () async {
+                                            try {
+                                              await user
+                                                  .sendEmailVerification();
+
+                                              await user.reload();
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      'Verification email sent to ${user.email}',
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            } catch (error) {
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      'Failed to send verification email: $error',
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                            Navigator.pop(context);
+                                          },
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+                              } else {
+                                // User is not authenticated, show error
+                                setState(() {
+                                  _loginErrorMessage =
+                                      'Authentication failed. Please try again.';
+                                });
+                              }
+                            }
+                            if (mounted) {
+                              setState(() {
+                                _isLoading = false;
+                              });
+                            }
+                          }
+                        },
+                child:
+                    _isLoading
+                        ? SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFFE89C31),
+                            ),
+                            strokeWidth: 3,
+                          ),
+                        )
+                        : const Text(
+                          'Login',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        ),
               ),
             ],
           ),
@@ -154,6 +398,26 @@ class _AuthenticationPageState extends State<AuthenticationPage>
     );
   }
 
+  String _getFirebaseErrorMessage(String errorCode) {
+    // Convert Firebase error messages to user-friendly messages
+    if (errorCode.contains('user-not-found')) {
+      return 'No account found with this email. Please register first.';
+    } else if (errorCode.contains('wrong-password')) {
+      return 'Incorrect password. Please try again.';
+    } else if (errorCode.contains('invalid-email')) {
+      return 'Invalid email format. Please check your email.';
+    } else if (errorCode.contains('network-request-failed')) {
+      return 'Network error. Please check your internet connection.';
+    } else {
+      return 'Authentication failed. Please try again later.';
+    }
+  }
+
+  bool _isRegisterPasswordVisible = false;
+  bool _isRegisterConfirmPasswordVisible = false;
+  bool _isRegistering = false;
+  String? _registerErrorMessage;
+
   Widget _buildRegisterTab() {
     return Center(
       child: Container(
@@ -161,19 +425,61 @@ class _AuthenticationPageState extends State<AuthenticationPage>
           key: _formKey,
           autovalidateMode: AutovalidateMode.onUserInteraction,
           child: Column(
-            spacing: 16,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              if (_registerErrorMessage != null)
+                Container(
+                  margin: EdgeInsets.only(bottom: 16),
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline, color: Colors.red),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _registerErrorMessage!,
+                          style: TextStyle(color: Colors.red.shade800),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close, size: 16),
+                        color: Colors.red.shade800,
+                        onPressed: () {
+                          setState(() {
+                            _registerErrorMessage = null;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
               TextFormField(
                 controller: registerEmailController,
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter an email address';
+                  }
+                  if (!RegExp(
+                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                  ).hasMatch(value)) {
+                    return 'Please enter a valid email address';
+                  }
+                  return null;
+                },
                 decoration: InputDecoration(
-                  hint: Text(
-                    'Email',
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
+                  labelText: 'Email',
+                  hintText: 'Enter your email address',
                   prefixIcon: Icon(Icons.email, color: Colors.grey.shade600),
-                  border: InputBorder.none,
-                  fillColor: Colors.grey.shade200,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  fillColor: Colors.grey.shade100,
                   filled: true,
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -184,10 +490,11 @@ class _AuthenticationPageState extends State<AuthenticationPage>
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: Colors.blue, width: 2),
+                    borderSide: BorderSide(color: Color(0xFF000080), width: 2),
                   ),
                 ),
               ),
+              SizedBox(height: 16),
               TextFormField(
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -199,15 +506,29 @@ class _AuthenticationPageState extends State<AuthenticationPage>
                   return null;
                 },
                 controller: registerPasswordController,
-                obscureText: true,
+                obscureText: !_isRegisterPasswordVisible,
                 decoration: InputDecoration(
-                  hint: Text(
-                    'Password',
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
+                  labelText: 'Password',
+                  hintText: 'Create a password (min. 6 characters)',
                   prefixIcon: Icon(Icons.lock, color: Colors.grey.shade600),
-                  border: InputBorder.none,
-                  fillColor: Colors.grey.shade200,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isRegisterPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                      color: Colors.grey.shade600,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isRegisterPasswordVisible =
+                            !_isRegisterPasswordVisible;
+                      });
+                    },
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  fillColor: Colors.grey.shade100,
                   filled: true,
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -218,30 +539,48 @@ class _AuthenticationPageState extends State<AuthenticationPage>
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: Colors.blue, width: 2),
+                    borderSide: BorderSide(color: Color(0xFF000080), width: 2),
                   ),
                 ),
               ),
+              SizedBox(height: 16),
               TextFormField(
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please confirm your password';
                   }
-                  // if (value != passwordController.text) {
-                  //   return 'Passwords do not match';
-                  // }
+                  if (value != registerPasswordController.text) {
+                    return 'Passwords do not match';
+                  }
                   return null;
                 },
                 controller: confirmPasswordController,
-                obscureText: true,
+                obscureText: !_isRegisterConfirmPasswordVisible,
                 decoration: InputDecoration(
-                  hint: Text(
-                    'Confirm Password',
-                    style: TextStyle(color: Colors.grey.shade600),
+                  labelText: 'Confirm Password',
+                  hintText: 'Re-enter your password',
+                  prefixIcon: Icon(
+                    Icons.lock_outline,
+                    color: Colors.grey.shade600,
                   ),
-                  prefixIcon: Icon(Icons.lock, color: Colors.grey.shade600),
-                  border: InputBorder.none,
-                  fillColor: Colors.grey.shade200,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isRegisterConfirmPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                      color: Colors.grey.shade600,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isRegisterConfirmPasswordVisible =
+                            !_isRegisterConfirmPasswordVisible;
+                      });
+                    },
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  fillColor: Colors.grey.shade100,
                   filled: true,
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -252,81 +591,129 @@ class _AuthenticationPageState extends State<AuthenticationPage>
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: Colors.blue, width: 2),
+                    borderSide: BorderSide(color: Color(0xFF000080), width: 2),
                   ),
                 ),
               ),
 
               SizedBox(height: 16),
               ElevatedButton(
-                style: ButtonStyle(
-                  minimumSize: WidgetStateProperty.all(
-                    Size(MediaQuery.of(context).size.width * 0.9, 50),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(
+                    MediaQuery.of(context).size.width * 0.9,
+                    50,
                   ),
-                  fixedSize: WidgetStateProperty.all(Size(200, 50)),
-                  shape: WidgetStateProperty.all(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+                  backgroundColor: Color(0xFF000080),
+                  foregroundColor: Color(0xFFE89C31),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  backgroundColor: WidgetStateProperty.all(Color(0XFF000080)),
+                  elevation: 3,
                 ),
+                onPressed:
+                    _isRegistering
+                        ? null
+                        : () async {
+                          if (!_formKey.currentState!.validate()) {
+                            return;
+                          }
 
-                onPressed: () async {
-                  // validate form
-                  if (_formKey.currentState!.validate() &&
-                      registerPasswordController.text ==
-                          confirmPasswordController.text) {
-                    try {
-                      await FirebaseAuth.instance
-                          .createUserWithEmailAndPassword(
-                            email: registerEmailController.text,
-                            password: registerPasswordController.text,
-                          )
-                          .then((UserCredential userCredential) async {
-                            if (userCredential.user == null) {
-                              return;
-                            }
-                            FirebaseFirestore.instance
-                                .collection('users')
-                                .doc(userCredential.user!.uid)
-                                .set(
-                                  NavySyncUser(
-                                    id: userCredential.user!.uid,
-                                    profilePictureUrl: '',
-                                    name: 'User',
-                                    role: 'unassigned',
-                                  ).toMap(),
-                                )
-                                .then((_) {
-                                  print('User profile created in Firestore');
-                                })
-                                .catchError((error) {
-                                  print(
-                                    'Failed to create user profile: $error',
-                                  );
-                                });
+                          setState(() {
+                            _isRegistering = true;
+                            _registerErrorMessage = null;
                           });
 
-                      if (context.mounted) {
-                        context.go('/auth_gate');
-                      }
-                    } catch (e) {
-                      // Handle login error
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Login failed: $e')),
-                      );
-                    }
-                  }
-                },
-                child: const Text(
-                  'Register',
+                          try {
+                            await FirebaseAuth.instance
+                                .createUserWithEmailAndPassword(
+                                  email: registerEmailController.text,
+                                  password: registerPasswordController.text,
+                                )
+                                .then((UserCredential userCredential) async {
+                                  if (userCredential.user == null) {
+                                    return;
+                                  }
 
-                  style: TextStyle(
-                    color: Color(0XFFe89c31),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
+                                  await FirebaseAuth.instance.currentUser!
+                                      .sendEmailVerification();
+                                  FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(userCredential.user!.uid)
+                                      .set(
+                                        NavySyncUser(
+                                          id: userCredential.user!.uid,
+                                          profilePictureUrl: '',
+                                          name: 'User',
+                                          roles: ['unassigned'],
+                                        ).toMap(),
+                                      )
+                                      .then((_) {
+                                        print(
+                                          'User profile created in Firestore',
+                                        );
+                                      })
+                                      .catchError((error) {
+                                        print(
+                                          'Failed to create user profile: $error',
+                                        );
+                                      });
+                                });
+
+                            // clear inputs
+                            registerEmailController.clear();
+                            registerPasswordController.clear();
+                            confirmPasswordController.clear();
+
+                            // navigate to login tab
+                            _tabController.index = 0;
+
+                            await FirebaseAuth.instance.currentUser!.reload();
+
+                            showDialog(
+                              context: context,
+                              builder: (context) {
+                                return AlertDialog(
+                                  title: Text("Please verify your email"),
+                                  content: Text(
+                                    "A verification email has been sent to ${registerEmailController.text}. Please check your inbox and follow the instructions to verify your account.",
+                                  ),
+                                );
+                              },
+                            );
+                          } catch (e) {
+                            setState(() {
+                              _registerErrorMessage =
+                                  _getFirebaseRegisterErrorMessage(
+                                    e.toString(),
+                                  );
+                            });
+                          } finally {
+                            if (mounted) {
+                              setState(() {
+                                _isRegistering = false;
+                              });
+                            }
+                          }
+                        },
+                child:
+                    _isRegistering
+                        ? SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFFE89C31),
+                            ),
+                            strokeWidth: 3,
+                          ),
+                        )
+                        : const Text(
+                          'Register',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        ),
               ),
             ],
           ),
@@ -335,16 +722,74 @@ class _AuthenticationPageState extends State<AuthenticationPage>
     );
   }
 
+  String _getFirebaseRegisterErrorMessage(String errorCode) {
+    if (errorCode.contains('email-already-in-use')) {
+      return 'This email is already registered. Please login instead.';
+    } else if (errorCode.contains('invalid-email')) {
+      return 'The email address is not valid.';
+    } else if (errorCode.contains('weak-password')) {
+      return 'The password is too weak. Please use a stronger password.';
+    } else if (errorCode.contains('network-request-failed')) {
+      return 'Network error. Please check your internet connection.';
+    } else {
+      return 'Registration failed: ${errorCode.split(']').last.trim()}';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Column(
           children: [
             Container(
               height: 0.25 * MediaQuery.sizeOf(context).height,
-              color: Colors.red,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF000080), Color(0xFF0000B3)],
+                ),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Icon(
+                          Icons.sailing,
+                          size: 60,
+                          color: Color(0xFF000080),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'NavySync',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
             _buildTabBar(),
             Expanded(

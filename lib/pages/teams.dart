@@ -42,29 +42,64 @@ class _HomeScreenState extends State<TeamsView> {
     ];
   }
 
+  Widget _buildTeamSlider() {
+    return SizedBox(
+      height: 200,
+      child: CarouselView(
+        shrinkExtent: 200,
+        children: [
+          for (var team in getDummyTeams())
+            Card(
+              child: InkWell(
+                onTap: () {},
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(),
+                        Spacer(),
+                        IconButton(
+                          onPressed: () {},
+                          icon: Icon(Icons.calendar_month),
+                        ),
+                        IconButton(
+                          onPressed: () {},
+                          icon: Icon(Icons.settings),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      team.name,
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
+                        team.description,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+        itemExtent: 200,
+        onTap: (value) {},
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Teams')),
 
-      body: CustomScrollView(
-        slivers: [
-          SliverList.builder(
-            itemCount: getDummyTeams().length,
-            itemBuilder: (context, index) {
-              final team = getDummyTeams()[index];
-              return Card(
-                child: ListTile(
-                  onTap: () {
-                    context.push('/teams/${team.id}');
-                  },
-                  title: Text(team.name),
-                  subtitle: Text(team.description),
-                ),
-              );
-            },
-          ),
-        ],
+      body: SingleChildScrollView(
+        child: Column(children: [_buildTeamSlider()]),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {

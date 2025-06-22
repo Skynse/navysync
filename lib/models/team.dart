@@ -4,7 +4,6 @@ class Team {
   final String id;
   final String name;
   final String description;
-
   final String teamLeaderId;
   final List<String> members;
 
@@ -23,7 +22,7 @@ class Team {
       id: doc.id,
       name: data['name'] ?? '',
       description: data['description'] ?? '',
-  
+
       teamLeaderId: data['teamLeaderId'] ?? '',
       members: List<String>.from(data['members'] ?? []),
     );

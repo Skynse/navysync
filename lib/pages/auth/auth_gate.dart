@@ -16,7 +16,11 @@ class AuthGate extends StatelessWidget {
         // snapshot is expecting type User.
         WidgetsBinding.instance.addPostFrameCallback((_) {
           // Add Your Code here.
-          if (!snapshot.hasData) {
+          if (!snapshot.hasData ||
+              (snapshot.hasData &&
+                  !FirebaseAuth.instance.currentUser!.emailVerified)) {
+            // print email
+
             // User is not logged in
             context.go('/authentication');
           } else {
