@@ -5,6 +5,8 @@ class Event {
   final String title;
   final String description;
   final DateTime date;
+  final Timestamp? startTime;
+  final Timestamp? endTime;
   final String location;
   final String creatorId;
   final String event_type; // 'departmental', 'team', 'organization'
@@ -18,6 +20,8 @@ class Event {
     required this.title,
     required this.description,
     required this.date,
+    this.startTime,
+    this.endTime,
     required this.location,
     required this.creatorId,
     required this.event_type,
@@ -36,6 +40,9 @@ class Event {
           json['date'] is Timestamp
               ? (json['date'] as Timestamp).toDate()
               : DateTime.parse(json['date']),
+
+      startTime: json['startTime'],
+      endTime: json['endTime'],
       location: json['location'],
       creatorId: json['creatorId'],
       event_type: json['event_type'] ?? 'departmental',

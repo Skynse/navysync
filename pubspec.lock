@@ -142,6 +142,11 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.0.0"
+  flutter_localizations:
+    dependency: transitive
+    description: flutter
+    source: sdk
+    version: "0.0.0"
   flutter_riverpod:
     dependency: "direct main"
     description:
@@ -168,6 +173,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "14.8.1"
+  http:
+    dependency: transitive
+    description:
+      name: http
+      sha256: "2c11f3f94c687ee9bad77c171151672986360b2b001d109814ee7140b2cf261b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.0"
   http_parser:
     dependency: transitive
     description:
@@ -176,6 +189,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.2"
+  intl:
+    dependency: "direct main"
+    description:
+      name: intl
+      sha256: "3df61194eb431efc39c4ceba583b95633a403f46c9fd341e550ce0bfa50e9aa5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.20.2"
   leak_tracker:
     dependency: transitive
     description:
@@ -309,6 +330,38 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.1"
+  syncfusion_flutter_calendar:
+    dependency: "direct main"
+    description:
+      name: syncfusion_flutter_calendar
+      sha256: "4c484c7ca030021b92c2bff56c38640aef969c89e85a1d3cc9e21d0c6eb1bc46"
+      url: "https://pub.dev"
+    source: hosted
+    version: "30.1.38"
+  syncfusion_flutter_core:
+    dependency: transitive
+    description:
+      name: syncfusion_flutter_core
+      sha256: ea496f84e6a2c368076678a253264cf1a38e2a6ce417e656359aa5d1f7239f3a
+      url: "https://pub.dev"
+    source: hosted
+    version: "30.1.38"
+  syncfusion_flutter_datepicker:
+    dependency: transitive
+    description:
+      name: syncfusion_flutter_datepicker
+      sha256: cf44061555715c6d5cc4ce97d2431108ab51460d5af0fc877823573509fce1b8
+      url: "https://pub.dev"
+    source: hosted
+    version: "30.1.38"
+  syncfusion_localizations:
+    dependency: transitive
+    description:
+      name: syncfusion_localizations
+      sha256: a67eebf86d74c8c562a0fe698bd44675196b07185cb97316bad47db1318753c6
+      url: "https://pub.dev"
+    source: hosted
+    version: "30.1.38"
   term_glyph:
     dependency: transitive
     description:
@@ -325,6 +378,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.4"
+  timezone:
+    dependency: transitive
+    description:
+      name: timezone
+      sha256: dd14a3b83cfd7cb19e7888f1cbc20f258b8d71b54c06f79ac585f14093a287d1
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.10.1"
   typed_data:
     dependency: transitive
     description:

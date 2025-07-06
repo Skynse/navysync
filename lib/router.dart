@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:navysync/pages/auth/auth_gate.dart';
 import 'package:navysync/pages/auth/authentication_page.dart';
+import 'package:navysync/pages/auth/verify_email_page.dart';
 import 'package:navysync/pages/home_page.dart';
 import 'package:navysync/pages/profile.dart';
 import 'package:navysync/pages/tasks.dart';
 import 'package:navysync/pages/team_details_view.dart';
+import 'package:navysync/pages/team_events_view.dart';
 import 'package:navysync/pages/teams.dart';
+import 'package:navysync/pages/team_manage_view.dart';
 
 final router = GoRouter(
   initialLocation: '/auth_gate',
@@ -27,6 +30,11 @@ final router = GoRouter(
         // This is where you would show the authentication page
         return const AuthenticationPage();
       },
+    ),
+
+    GoRoute(
+      path: '/verify_email',
+      builder: (context, state) => const VerifyEmailPage(),
     ),
 
     StatefulShellRoute.indexedStack(
@@ -56,6 +64,20 @@ final router = GoRouter(
                   builder: (context, state) {
                     final teamId = state.pathParameters['teamId']!;
                     return TeamDetailsView(teamId: teamId);
+                  },
+                ),
+                GoRoute(
+                  path: ':teamId/events',
+                  builder: (context, state) {
+                    final teamId = state.pathParameters['teamId']!;
+                    return TeamEventsView(teamId: teamId);
+                  },
+                ),
+                GoRoute(
+                  path: ':teamId/manage',
+                  builder: (context, state) {
+                    final teamId = state.pathParameters['teamId']!;
+                    return TeamManageView(teamId: teamId);
                   },
                 ),
               ],

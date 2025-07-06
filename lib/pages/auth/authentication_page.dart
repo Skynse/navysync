@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -28,6 +26,21 @@ class _AuthenticationPageState extends State<AuthenticationPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    // Redirect if already logged in and not verified
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && !user.emailVerified) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          context.go('/verify_email');
+        }
+      });
+    } else if (user != null && user.emailVerified) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          context.go('/auth_gate');
+        }
+      });
+    }
   }
 
   @override
@@ -301,7 +314,9 @@ class _AuthenticationPageState extends State<AuthenticationPage>
                                 context.go('/auth_gate');
                               }
                             } else {
-                              if (!user!.emailVerified) {
+                              if (user != null &&
+                                  !user.emailVerified &&
+                                  user.email == emailController.text) {
                                 // User is authenticated but not verified, show error
                                 setState(() {
                                   _loginErrorMessage =
