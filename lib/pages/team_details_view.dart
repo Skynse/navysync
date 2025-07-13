@@ -404,7 +404,7 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
-                    ),
+                      ),
                     const SizedBox(height: 8),
                     Card(
                       elevation: 2,
