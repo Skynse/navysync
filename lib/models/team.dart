@@ -18,13 +18,15 @@ class Team {
 
   factory Team.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final members = List<String>.from(data['members'] ?? []);
+    print('[Team.fromFirestore] doc.id: \\${doc.id}, members: \\${members}');
     return Team(
       id: doc.id,
       name: data['name'] ?? '',
       description: data['description'] ?? '',
 
       teamLeaderId: data['teamLeaderId'] ?? '',
-      members: List<String>.from(data['members'] ?? []),
+      members: members,
     );
   }
 

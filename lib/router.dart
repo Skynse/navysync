@@ -10,6 +10,8 @@ import 'package:navysync/pages/team_details_view.dart';
 import 'package:navysync/pages/team_events_view.dart';
 import 'package:navysync/pages/teams.dart';
 import 'package:navysync/pages/team_manage_view.dart';
+import 'package:navysync/pages/calendar_page.dart';
+import 'package:navysync/pages/create_event_page.dart';
 
 final router = GoRouter(
   initialLocation: '/auth_gate',
@@ -56,10 +58,6 @@ final router = GoRouter(
               builder: (context, state) => TeamsView(),
               routes: [
                 GoRoute(
-                  path: 'create',
-                  builder: (context, state) => const TeamCreateView(),
-                ),
-                GoRoute(
                   path: ':teamId',
                   builder: (context, state) {
                     final teamId = state.pathParameters['teamId']!;
@@ -94,6 +92,22 @@ final router = GoRouter(
             GoRoute(
               path: '/profile',
               builder: (context, state) => ProfilePage(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/calendar',
+              builder: (context, state) => CalendarPage(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/create-event',
+              builder: (context, state) => CreateEventPage(),
             ),
           ],
         ),
