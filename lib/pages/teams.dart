@@ -509,7 +509,7 @@ class _TeamCreateDialogState extends State<TeamCreateDialog> {
                                         .contains(user.id);
                                     final isCurrentUser =
                                         user.id ==
-                                        AuthService().currentUser?.id;
+                                        FirebaseAuth.instance.currentUser?.uid;
 
                                     return CheckboxListTile(
                                       title: Text(user.name),

@@ -58,7 +58,7 @@ class AuthService {
     if (_currentUser!.isAdmin()) return true;
 
     // Event creator always has access
-    if (event.creatorId == _currentUser!.id) return true;
+    if (event.createdBy == _currentUser!.id) return true;
 
     return event.canUserAccess(
       _currentUser!.id,

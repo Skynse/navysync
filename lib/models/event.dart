@@ -8,7 +8,7 @@ class Event {
   final Timestamp? startTime;
   final Timestamp? endTime;
   final String location;
-  final String creatorId;
+  final String createdBy;
   final String event_type; // 'departmental', 'team', 'organization'
   final String departmentId; // Required if event_type is 'departmental'
   final String teamId; // Required if event_type is 'team'
@@ -23,7 +23,7 @@ class Event {
     this.startTime,
     this.endTime,
     required this.location,
-    required this.creatorId,
+    required this.createdBy,
     required this.event_type,
     this.departmentId = '',
     this.teamId = '',
@@ -44,7 +44,7 @@ class Event {
       startTime: json['startTime'],
       endTime: json['endTime'],
       location: json['location'],
-      creatorId: json['creatorId'],
+      createdBy: json['createdBy'],
       event_type: json['event_type'] ?? 'departmental',
       departmentId: json['departmentId'] ?? '',
       teamId: json['teamId'] ?? '',
@@ -60,7 +60,7 @@ class Event {
       'description': description,
       'date': date.toIso8601String(),
       'location': location,
-      'creatorId': creatorId,
+      'creatorId': createdBy,
       'event_type': event_type,
       'departmentId': departmentId,
       'teamId': teamId,
@@ -77,7 +77,7 @@ class Event {
     List<String> userTeamIds,
   ) {
     // Always allow the creator and admins
-    if (userId == creatorId || userRoles.contains('admin')) {
+    if (userId == createdBy || userRoles.contains('admin')) {
       return true;
     }
 

@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:navysync/models/event.dart';
 import 'package:navysync/models/team.dart';
 import 'package:navysync/models/user.dart';
+import 'package:navysync/pages/team_events_view.dart';
 import 'package:navysync/pages/teams.dart';
 import 'package:navysync/services/auth_service.dart';
 
@@ -94,8 +96,9 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
       final now = DateTime.now();
       final eventsSnapshot =
           await FirebaseFirestore.instance
+              .collection('teams')
+              .doc(widget.teamId)
               .collection('events')
-              .where('teamId', isEqualTo: widget.teamId)
               .where('date', isGreaterThanOrEqualTo: now)
               .orderBy('date')
               .limit(5)
@@ -404,7 +407,7 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
-                      ),
+                    ),
                     const SizedBox(height: 8),
                     Card(
                       elevation: 2,
@@ -506,8 +509,20 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                                       ],
                                     ),
                                     onTap:
-                                        () => context.push(
-                                          '/events/${event['id']}',
+                                        // () => context.push(
+                                        //   '/events/${event['id']}',
+                                        //   extra: event,
+                                        // ),
+                                        () => Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder:
+                                                (context) => TeamEventsView(
+                                                  eventObject: Event.fromJson(
+                                                    event,
+                                                  ),
+                                                ),
+                                          ),
                                         ),
                                   );
                                 },
@@ -523,6 +538,7 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
       floatingActionButton:
           _canManageTeam
               ? FloatingActionButton.extended(
+                heroTag: 'create_team_action',
                 onPressed: () {
                   showModalBottomSheet(
                     context: context,

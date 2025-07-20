@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:navysync/models/event.dart';
 import 'package:navysync/pages/auth/auth_gate.dart';
 import 'package:navysync/pages/auth/authentication_page.dart';
 import 'package:navysync/pages/auth/verify_email_page.dart';
@@ -63,14 +64,25 @@ final router = GoRouter(
                     final teamId = state.pathParameters['teamId']!;
                     return TeamDetailsView(teamId: teamId);
                   },
+
+                  routes: [
+                    // Route for event details, passing the event object via extra
+                  ],
                 ),
-                GoRoute(
-                  path: ':teamId/events',
-                  builder: (context, state) {
-                    final teamId = state.pathParameters['teamId']!;
-                    return TeamEventsView(teamId: teamId);
-                  },
-                ),
+
+                // GoRoute(
+                //   path: 'events/:eventId',
+                //   builder: (context, state) {
+                //     final event = state.extra as Event?;
+                //     if (event == null) {
+                //       // Handle missing event object, e.g., show error or fallback
+                //       return Scaffold(
+                //         body: Center(child: Text('Event not found')),
+                //       );
+                //     }
+                //     return TeamEventsView(eventObject: event);
+                //   },
+                // ),
                 GoRoute(
                   path: ':teamId/manage',
                   builder: (context, state) {

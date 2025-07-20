@@ -805,6 +805,7 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton:
           _canCreateEvent()
               ? FloatingActionButton.extended(
+                heroTag: 'create_event_action_home',
                 onPressed: () => context.push('/create-event'),
                 backgroundColor: Color(0xFF000080),
                 icon: Icon(Icons.add, color: Colors.white),
