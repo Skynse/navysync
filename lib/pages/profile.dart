@@ -18,7 +18,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final AuthService _authService = AuthService();
-  NavySyncUser? _currentUser;
+  DocumentSnapshot? _currentUser;
   Department? _userDepartment;
   List<Team> _userTeams = [];
   bool _isLoading = true;
@@ -42,11 +42,11 @@ class _ProfilePageState extends State<ProfilePage> {
       }
 
       // Fetch user's department
-      if (_currentUser!.departmentId.isNotEmpty) {
+      if (_currentUser!['departmentId'] != null) {
         final deptDoc =
             await FirebaseFirestore.instance
                 .collection('departments')
-                .doc(_currentUser!.departmentId)
+                .doc(_currentUser!['departmentId'])
                 .get();
 
         if (deptDoc.exists) {
@@ -55,11 +55,12 @@ class _ProfilePageState extends State<ProfilePage> {
       }
 
       // Fetch user's teams
-      if (_currentUser!.teamIds.isNotEmpty) {
+      if (_currentUser!['teamIds'] != null &&
+          _currentUser!['teamIds'].isNotEmpty) {
         final teamsQuery =
             await FirebaseFirestore.instance
                 .collection('teams')
-                .where(FieldPath.documentId, whereIn: _currentUser!.teamIds)
+                .where(FieldPath.documentId, whereIn: _currentUser!['teamIds'])
                 .get();
 
         _userTeams =
@@ -187,17 +188,18 @@ class _ProfilePageState extends State<ProfilePage> {
                     CircleAvatar(
                       radius: 50,
                       backgroundImage:
-                          _currentUser?.profilePictureUrl != null &&
-                                  _currentUser!.profilePictureUrl.isNotEmpty
-                              ? NetworkImage(_currentUser!.profilePictureUrl)
+                          _currentUser?['profilePictureUrl'] != null &&
+                                  _currentUser!['profilePictureUrl'].isNotEmpty
+                              ? NetworkImage(_currentUser!['profilePictureUrl'])
                               : null,
                       backgroundColor: navyBlue.withOpacity(0.8),
                       child:
-                          _currentUser?.profilePictureUrl == null ||
-                                  _currentUser!.profilePictureUrl.isEmpty
+                          _currentUser?["profilePictureUrl"] == null ||
+                                  _currentUser!['profilePictureUrl'].isEmpty
                               ? Text(
-                                _currentUser?.name.isNotEmpty == true
-                                    ? _currentUser!.name[0].toUpperCase()
+                                _currentUser?['name'] != null &&
+                                        _currentUser!['name'].isNotEmpty
+                                    ? _currentUser!['name'][0].toUpperCase()
                                     : '?',
                                 style: TextStyle(
                                   fontSize: 30,
@@ -208,7 +210,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     SizedBox(height: 16),
                     Text(
-                      _currentUser?.name ??
+                      _currentUser?['name'] ??
                           FirebaseAuth.instance.currentUser!.email ??
                           'User',
                       style: TextStyle(
@@ -223,7 +225,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       runSpacing: 8,
                       alignment: WrapAlignment.center,
                       children:
-                          _currentUser?.roles
+                          _currentUser?['roles']
                               .map(
                                 (role) => Chip(
                                   label: Text(role),

@@ -13,7 +13,7 @@ class TeamManageView extends StatefulWidget {
 
 class _TeamManageViewState extends State<TeamManageView> {
   Team? _team;
-  List<NavySyncUser> _members = [];
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _members = [];
   bool _isLoading = true;
   String? _error;
 
@@ -41,10 +41,7 @@ class _TeamManageViewState extends State<TeamManageView> {
               .collection('users')
               .where('teamIds', arrayContains: widget.teamId)
               .get();
-      _members =
-          membersSnapshot.docs
-              .map((doc) => NavySyncUser.fromMap({'id': doc.id, ...doc.data()}))
-              .toList();
+      _members = membersSnapshot.docs.toList();
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -55,37 +52,34 @@ class _TeamManageViewState extends State<TeamManageView> {
   Future<void> _addMember() async {
     final usersSnapshot =
         await FirebaseFirestore.instance.collection('users').get();
-    final allUsers =
-        usersSnapshot.docs
-            .map((doc) => NavySyncUser.fromMap({'id': doc.id, ...doc.data()}))
-            .where((u) => !_members.any((m) => m.id == u.id))
-            .toList();
+    final allUsers = usersSnapshot.docs.toList();
     if (allUsers.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No users available to add.')),
       );
       return;
     }
-    NavySyncUser? selectedUser = await showDialog<NavySyncUser>(
-      context: context,
-      builder:
-          (context) => SimpleDialog(
-            title: const Text('Select user to add'),
-            children:
-                allUsers
-                    .map(
-                      (user) => SimpleDialogOption(
-                        onPressed: () => Navigator.pop(context, user),
-                        child: Text(user.name),
-                      ),
-                    )
-                    .toList(),
-          ),
-    );
-    if (selectedUser != null) {
+    QueryDocumentSnapshot<Map<String, dynamic>>? selectedUserDoc =
+        await showDialog<QueryDocumentSnapshot<Map<String, dynamic>>>(
+          context: context,
+          builder:
+              (context) => SimpleDialog(
+                title: const Text('Select user to add'),
+                children:
+                    allUsers
+                        .map(
+                          (user) => SimpleDialogOption(
+                            onPressed: () => Navigator.pop(context, user),
+                            child: Text(user["name"] ?? 'Unknown User'),
+                          ),
+                        )
+                        .toList(),
+              ),
+        );
+    if (selectedUserDoc != null) {
       await FirebaseFirestore.instance
           .collection('users')
-          .doc(selectedUser.id)
+          .doc(selectedUserDoc['id'])
           .update({
             'teamIds': FieldValue.arrayUnion([widget.teamId]),
           });
@@ -93,9 +87,9 @@ class _TeamManageViewState extends State<TeamManageView> {
     }
   }
 
-  Future<void> _removeMember(NavySyncUser user) async {
-    if (user.id == _team?.teamLeaderId) return;
-    await FirebaseFirestore.instance.collection('users').doc(user.id).update({
+  Future<void> _removeMember(String id) async {
+    if (id == _team?.teamLeaderId) return;
+    await FirebaseFirestore.instance.collection('users').doc(id).update({
       'teamIds': FieldValue.arrayRemove([widget.teamId]),
     });
     await _loadTeam();
@@ -198,20 +192,23 @@ class _TeamManageViewState extends State<TeamManageView> {
                           return ListTile(
                             leading: CircleAvatar(
                               backgroundImage:
-                                  user.profilePictureUrl.isNotEmpty
-                                      ? NetworkImage(user.profilePictureUrl)
+                                  user["profilePictureUrl"].isNotEmpty
+                                      ? NetworkImage(user["profilePictureUrl"])
                                       : null,
                               child:
-                                  user.profilePictureUrl.isEmpty
+                                  user["profilePictureUrl"].isEmpty
                                       ? Text(
-                                        user.name.isNotEmpty
-                                            ? user.name[0].toUpperCase()
+                                        user["name"] != null &&
+                                                user["name"].isNotEmpty
+                                            ? user["name"][0].toUpperCase()
                                             : '?',
                                       )
                                       : null,
                             ),
-                            title: Text(user.name),
-                            subtitle: Text(user.roles.join(', ')),
+                            title: Text(user["name"] ?? 'Unknown User'),
+                            subtitle: Text(
+                              user["roles"]?.join(', ') ?? 'No roles',
+                            ),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -231,7 +228,7 @@ class _TeamManageViewState extends State<TeamManageView> {
                                     ),
                                     tooltip: 'Remove',
                                     onPressed: () async {
-                                      await _removeMember(user);
+                                      await _removeMember(user.id);
                                     },
                                   ),
                               ],

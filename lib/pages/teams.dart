@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -17,12 +18,12 @@ class TeamsView extends StatefulWidget {
 class _TeamsViewState extends State<TeamsView> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late Stream<List<Team>> _teamsStream;
-  NavySyncUser? _currentUser;
+  User? _currentUser;
 
   @override
   void initState() {
     super.initState();
-    _currentUser = AuthService().currentUser;
+    _currentUser = FirebaseAuth.instance.currentUser;
     _teamsStream = _fetchTeams();
   }
 
@@ -158,7 +159,7 @@ class _TeamsViewState extends State<TeamsView> {
               itemCount: teams.length,
               itemBuilder: (context, index) {
                 final team = teams[index];
-                final isLeader = team.teamLeaderId == _currentUser?.id;
+                final isLeader = team.teamLeaderId == _currentUser?.uid;
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
@@ -357,19 +358,19 @@ class _TeamCreateDialogState extends State<TeamCreateDialog> {
     });
 
     try {
-      final currentUser = AuthService().currentUser;
+      final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) return;
 
       // Include current user as team leader and member
-      final members = <String>{currentUser.id, ..._selectedMembers}.toList();
+      final members = <String>{currentUser.uid, ..._selectedMembers}.toList();
 
       final team = {
         'name': _nameController.text.trim(),
         'description': _descriptionController.text.trim(),
-        'teamLeaderId': currentUser.id,
+        'teamLeaderId': currentUser.uid,
         'members': members,
         'createdAt': FieldValue.serverTimestamp(),
-        'createdBy': currentUser.id,
+        'createdBy': currentUser.uid,
       };
 
       await _firestore.collection('teams').add(team);
@@ -592,7 +593,7 @@ class _TeamCreateDialogState extends State<TeamCreateDialog> {
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton(
-                    onPressed: _isLoading ? null : _createTeam,
+                    onPressed: _createTeam,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
                       foregroundColor: Colors.white,

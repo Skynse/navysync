@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -43,18 +45,30 @@ class _HomeScreenState extends State<HomeScreen> {
   int _departmentMembersCount = 0;
   int _todaysEvents = 0;
 
+  late final StreamSubscription<User?> _authSubscription;
+
   @override
+  void dispose() {
+    _authSubscription.cancel();
+    super.dispose();
+  }
+
   void initState() {
     super.initState();
-    FirebaseAuth.instance.authStateChanges().listen((user) async {
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((
+      user,
+    ) async {
+      if (!mounted) return; // Prevent setState after dispose
       if (user != null) {
         await AppUserProfile.load(user.uid);
+        if (!mounted) return;
         setState(() {
           _error = null;
           _isLoading = false;
         });
         _loadDashboardData();
       } else {
+        if (!mounted) return;
         setState(() {
           _error = 'User not authenticated';
           _isLoading = false;

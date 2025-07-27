@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:navysync/models/event.dart';
@@ -18,9 +19,9 @@ class TeamDetailsView extends StatefulWidget {
 
 class _TeamDetailsViewState extends State<TeamDetailsView> {
   final AuthService _authService = AuthService();
-  NavySyncUser? _currentUser;
+  DocumentSnapshot? _currentUser;
   Team? _team;
-  List<NavySyncUser> _teamMembers = [];
+  List<QueryDocumentSnapshot> _teamMembers = [];
   List<dynamic> _teamAnnouncements = [];
   List<dynamic> _teamEvents = [];
   bool _isLoading = true;
@@ -37,7 +38,11 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
 
     try {
       // Get current user
-      _currentUser = await _authService.loadUserData();
+      _currentUser =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(FirebaseAuth.instance.currentUser?.uid)
+              .get();
 
       // Fetch team data
       final teamDoc =
@@ -59,8 +64,8 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
       // Check permissions
       _canManageTeam =
           _team!.teamLeaderId == _currentUser?.id ||
-          _currentUser?.isAdmin() == true ||
-          _currentUser?.roles.contains('department_head') == true;
+          _currentUser?["roles"].contains('admin') ||
+          _currentUser?["roles"].contains('department_head');
 
       // Fetch team members
       if (_team!.members.isNotEmpty) {
@@ -70,12 +75,7 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                 .where(FieldPath.documentId, whereIn: _team!.members)
                 .get();
 
-        _teamMembers =
-            membersSnapshot.docs
-                .map(
-                  (doc) => NavySyncUser.fromMap({'id': doc.id, ...doc.data()}),
-                )
-                .toList();
+        _teamMembers = membersSnapshot.docs;
       }
 
       // Fetch team announcements
@@ -231,7 +231,7 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
           if (_canManageTeam)
             IconButton(
               icon: const Icon(Icons.edit),
-              onPressed: () => context.push('/teams/${widget.teamId}/edit'),
+              onPressed: () => context.push('/teams/${widget.teamId}/manage'),
             ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadTeamData),
         ],
@@ -305,19 +305,23 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                           return ListTile(
                             leading: CircleAvatar(
                               backgroundImage:
-                                  member.profilePictureUrl.isNotEmpty
-                                      ? NetworkImage(member.profilePictureUrl)
+                                  member["profilePictureUrl"] != null
+                                      ? NetworkImage(
+                                        member["profilePictureUrl"],
+                                      )
                                       : null,
                               child:
-                                  member.profilePictureUrl.isEmpty
+                                  member["profilePictureUrl"] == null ||
+                                          member["profilePictureUrl"].isEmpty
                                       ? Text(
-                                        member.name.isNotEmpty
-                                            ? member.name[0].toUpperCase()
+                                        member["name"] != null &&
+                                                member["name"].isNotEmpty
+                                            ? member["name"][0].toUpperCase()
                                             : '?',
                                       )
                                       : null,
                             ),
-                            title: Text(member.name),
+                            title: Text(member["name"] ?? 'Unknown User'),
                             subtitle: Text(
                               isTeamLeader ? 'Team Leader' : 'Member',
                             ),
@@ -338,7 +342,7 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                                                   'Remove Member',
                                                 ),
                                                 content: Text(
-                                                  'Remove ${member.name} from the team?',
+                                                  'Remove ${member["name"]} from the team?',
                                                 ),
                                                 actions: [
                                                   TextButton(
