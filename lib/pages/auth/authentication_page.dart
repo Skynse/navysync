@@ -655,12 +655,12 @@ class _AuthenticationPageState extends State<AuthenticationPage>
                                       .collection('users')
                                       .doc(userCredential.user!.uid)
                                       .set(
-                                        NavySyncUser(
-                                          id: userCredential.user!.uid,
-                                          profilePictureUrl: '',
-                                          name: 'User',
-                                          roles: ['unassigned'],
-                                        ).toMap(),
+                                        {
+                                          'id': userCredential.user!.uid,
+                                          'profilePictureUrl': '',
+                                          'name': 'User',
+                                          'roles': ['unassigned'],
+                                        }
                                       )
                                       .then((_) {
                                         print(

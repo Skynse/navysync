@@ -1,165 +1,558 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../models/event.dart';
+import '../providers/event_provider.dart';
+import '../providers/auth_provider.dart';
+import '../providers/team_provider.dart';
+import '../constants.dart';
 
-class CreateEventPage extends StatefulWidget {
+extension EventVisibilityExtension on EventVisibility {
+  String get displayName {
+    switch (this) {
+      case EventVisibility.organization:
+        return 'Organization';
+      case EventVisibility.department:
+        return 'Department';
+      case EventVisibility.team:
+        return 'Team';
+      case EventVisibility.private:
+        return 'Private';
+    }
+  }
+
+  String get description {
+    switch (this) {
+      case EventVisibility.organization:
+        return 'Visible to all organization members';
+      case EventVisibility.department:
+        return 'Visible to department members only';
+      case EventVisibility.team:
+        return 'Visible to team members only';
+      case EventVisibility.private:
+        return 'Visible to invited attendees only';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case EventVisibility.organization:
+        return Icons.public;
+      case EventVisibility.department:
+        return Icons.business;
+      case EventVisibility.team:
+        return Icons.group;
+      case EventVisibility.private:
+        return Icons.lock;
+    }
+  }
+
+  Color get color {
+    switch (this) {
+      case EventVisibility.organization:
+        return AppColors.gold;
+      case EventVisibility.department:
+        return AppColors.primaryBlue;
+      case EventVisibility.team:
+        return AppColors.lightBlue;
+      case EventVisibility.private:
+        return AppColors.darkGray;
+    }
+  }
+}
+
+class CreateEventPage extends ConsumerStatefulWidget {
   const CreateEventPage({super.key});
 
   @override
-  State<CreateEventPage> createState() => _CreateEventPageState();
+  ConsumerState<CreateEventPage> createState() => _CreateEventPageState();
 }
 
-class _CreateEventPageState extends State<CreateEventPage> {
+class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   final _formKey = GlobalKey<FormState>();
-  String _title = '';
-  String _description = '';
-  String _location = '';
-  DateTime _date = DateTime.now();
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _locationController = TextEditingController();
+
+  DateTime _startDate = DateTime.now();
+  TimeOfDay _startTime = TimeOfDay.now();
+  DateTime? _endDate;
+  TimeOfDay? _endTime;
+
+  EventVisibility _visibility = EventVisibility.team;
   String? _selectedTeamId;
+  bool _isAllDay = false;
   bool _isLoading = false;
   String? _error;
-  List<Map<String, dynamic>> _userTeams = [];
 
   @override
-  void initState() {
-    super.initState();
-    _fetchUserTeams();
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _locationController.dispose();
+    super.dispose();
   }
 
-  Future<void> _fetchUserTeams() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    final teamsQuery =
-        await FirebaseFirestore.instance
-            .collection('teams')
-            .where('members', arrayContains: user.uid)
-            .get();
-    setState(() {
-      _userTeams =
-          teamsQuery.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList();
-      if (_userTeams.isNotEmpty) {
-        _selectedTeamId = _userTeams.first['id'];
-      }
-    });
+  DateTime get _eventStartDateTime {
+    if (_isAllDay) {
+      return DateTime(_startDate.year, _startDate.month, _startDate.day);
+    }
+    return DateTime(
+      _startDate.year,
+      _startDate.month,
+      _startDate.day,
+      _startTime.hour,
+      _startTime.minute,
+    );
+  }
+
+  DateTime? get _eventEndDateTime {
+    if (_endDate == null) return null;
+
+    final endDate = _endDate!;
+    final endTime = _endTime ?? const TimeOfDay(hour: 23, minute: 59);
+
+    if (_isAllDay) {
+      return DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+    }
+    return DateTime(
+      endDate.year,
+      endDate.month,
+      endDate.day,
+      endTime.hour,
+      endTime.minute,
+    );
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate() || _selectedTeamId == null) return;
-    _formKey.currentState!.save();
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) throw Exception('Not authenticated');
-      await FirebaseFirestore.instance
-          .collection('teams')
-          .doc(_selectedTeamId)
-          .collection('events')
-          .add({
-            'title': _title,
-            'description': _description,
-            'location': _location,
-            'date': Timestamp.fromDate(_date),
-            'createdBy': user.uid,
-          });
-      if (mounted) Navigator.of(context).pop(true);
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    if (!_formKey.currentState!.validate()) return;
+
+    final currentUserAsync = ref.read(currentUserProvider);
+
+    currentUserAsync.when(
+      data: (user) async {
+        if (user == null) {
+          setState(() => _error = 'Not authenticated');
+          return;
+        }
+
+        // Validate visibility-specific requirements
+        if (_visibility == EventVisibility.team && _selectedTeamId == null) {
+          setState(() => _error = 'Please select a team for team visibility');
+          return;
+        }
+
+        setState(() {
+          _isLoading = true;
+          _error = null;
+        });
+
+        try {
+          final event = Event(
+            id: '', // Will be generated by repository
+            title: _titleController.text.trim(),
+            description: _descriptionController.text.trim(),
+            date: _eventStartDateTime,
+            startTime: Timestamp.fromDate(_eventStartDateTime),
+            endTime:
+                _eventEndDateTime != null
+                    ? Timestamp.fromDate(_eventEndDateTime!)
+                    : null,
+            location: _locationController.text.trim(),
+            visibility: _visibility,
+            teamId:
+                _visibility == EventVisibility.team ? _selectedTeamId : null,
+            departmentId:
+                _visibility == EventVisibility.department
+                    ? user.departmentId
+                    : null,
+            createdBy: user.id,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+            isActive: true,
+          );
+
+          final eventActions = ref.read(eventActionsProvider);
+          await eventActions.createEvent(event);
+
+          if (mounted) {
+            Navigator.of(context).pop(true);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Event created successfully')),
+            );
+          }
+        } catch (e) {
+          setState(() => _error = e.toString());
+        } finally {
+          setState(() => _isLoading = false);
+        }
+      },
+      loading: () => setState(() => _error = 'Loading user data...'),
+      error: (error, _) => setState(() => _error = error.toString()),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentUserAsync = ref.watch(currentUserProvider);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Event')),
+      appBar: AppBar(
+        title: const Text('Create Event'),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child:
-            _userTeams.isEmpty
-                ? const Center(
-                  child: Text('You are not a member of any teams.'),
-                )
-                : Form(
-                  key: _formKey,
-                  child: ListView(
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: [
+              // Title
+              TextFormField(
+                controller: _titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Event Title *',
+                  hintText: 'Enter event title',
+                  prefixIcon: Icon(Icons.event),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter an event title';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Description
+              TextFormField(
+                controller: _descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  hintText: 'Enter event description',
+                  prefixIcon: Icon(Icons.description),
+                ),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+
+              // Location
+              TextFormField(
+                controller: _locationController,
+                decoration: const InputDecoration(
+                  labelText: 'Location',
+                  hintText: 'Enter event location',
+                  prefixIcon: Icon(Icons.location_on),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Visibility Selection
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      DropdownButtonFormField<String>(
-                        value: _selectedTeamId,
-                        items:
-                            _userTeams
-                                .map(
-                                  (team) => DropdownMenuItem<String>(
-                                    value: team['id'] as String,
-                                    child: Text(team['name'] ?? 'Unnamed Team'),
+                      const Text(
+                        'Event Visibility',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      ...EventVisibility.values.map((visibility) {
+                        return RadioListTile<EventVisibility>(
+                          value: visibility,
+                          groupValue: _visibility,
+                          onChanged: (value) {
+                            setState(() {
+                              _visibility = value!;
+                              // Reset selections when visibility changes
+                              if (_visibility != EventVisibility.team) {
+                                _selectedTeamId = null;
+                              }
+                            });
+                          },
+                          title: Text(visibility.displayName),
+                          subtitle: Text(visibility.description),
+                          secondary: Icon(
+                            visibility.icon,
+                            color: visibility.color,
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Team Selection (only for team visibility)
+              if (_visibility == EventVisibility.team)
+                currentUserAsync.when(
+                  data: (user) {
+                    if (user == null) return const SizedBox();
+
+                    return Consumer(
+                      builder: (context, ref, child) {
+                        final userTeamsAsync = ref.watch(
+                          teamsByMemberProvider(user.id),
+                        );
+
+                        return userTeamsAsync.when(
+                          data: (teams) {
+
+                            if (teams.isEmpty) {
+                              return const Card(
+                                child: Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Text(
+                                    'You are not a member of any teams. Please join a team to create team events.',
+                                    style: TextStyle(color: Colors.orange),
                                   ),
-                                )
-                                .toList(),
-                        onChanged: (v) => setState(() => _selectedTeamId = v),
-                        decoration: const InputDecoration(labelText: 'Team'),
-                        validator: (v) => v == null ? 'Select a team' : null,
+                                ),
+                              );
+                            }
+                            return DropdownButtonFormField<String>(
+                              value: _selectedTeamId,
+                              decoration: const InputDecoration(
+                                labelText: 'Select Team *',
+                                prefixIcon: Icon(Icons.group),
+                              ),
+                              items:
+                                  teams.map((team) {
+                                    return DropdownMenuItem<String>(
+                                      value: team.id,
+                                      child: Text(team.name),
+                                    );
+                                  }).toList(),
+                              onChanged: (value) {
+                                setState(() => _selectedTeamId = value);
+                              },
+                              validator: (value) {
+                                if (_visibility == EventVisibility.team &&
+                                    value == null) {
+                                  return 'Please select a team';
+                                }
+                                return null;
+                              },
+                            );
+                          },
+                          loading: () => const LinearProgressIndicator(),
+                          error:
+                              (error, _) => Text('Error loading teams: $error'),
+                        );
+                      },
+                    );
+                  },
+                  loading: () => const LinearProgressIndicator(),
+                  error: (error, _) => Text('Error: $error'),
+                ),
+
+              if (_visibility == EventVisibility.team)
+                const SizedBox(height: 16),
+
+              // All Day Toggle
+              SwitchListTile(
+                title: const Text('All Day Event'),
+                subtitle: const Text('Event lasts the entire day'),
+                value: _isAllDay,
+                onChanged: (value) {
+                  setState(() => _isAllDay = value);
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Start Date and Time
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Start Date & Time',
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      TextFormField(
-                        decoration: const InputDecoration(labelText: 'Title'),
-                        onSaved: (v) => _title = v ?? '',
-                        validator:
-                            (v) => v == null || v.isEmpty ? 'Required' : null,
-                      ),
-                      TextFormField(
-                        decoration: const InputDecoration(
-                          labelText: 'Description',
-                        ),
-                        onSaved: (v) => _description = v ?? '',
-                        maxLines: 2,
-                      ),
-                      TextFormField(
-                        decoration: const InputDecoration(
-                          labelText: 'Location',
-                        ),
-                        onSaved: (v) => _location = v ?? '',
-                      ),
-                      const SizedBox(height: 16),
-                      ListTile(
-                        title: Text(
-                          'Date: ${_date.toLocal().toString().split(' ')[0]}',
-                        ),
-                        trailing: Icon(Icons.calendar_today),
-                        onTap: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: _date,
-                            firstDate: DateTime.now().subtract(
-                              const Duration(days: 1),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ListTile(
+                              title: const Text('Date'),
+                              subtitle: Text(
+                                '${_startDate.day}/${_startDate.month}/${_startDate.year}',
+                              ),
+                              leading: const Icon(Icons.calendar_today),
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: _startDate,
+                                  firstDate: DateTime.now(),
+                                  lastDate: DateTime.now().add(
+                                    const Duration(days: 365),
+                                  ),
+                                );
+                                if (picked != null) {
+                                  setState(() => _startDate = picked);
+                                }
+                              },
                             ),
-                            lastDate: DateTime.now().add(
-                              const Duration(days: 365),
+                          ),
+                          if (!_isAllDay)
+                            Expanded(
+                              child: ListTile(
+                                title: const Text('Time'),
+                                subtitle: Text(_startTime.format(context)),
+                                leading: const Icon(Icons.access_time),
+                                onTap: () async {
+                                  final picked = await showTimePicker(
+                                    context: context,
+                                    initialTime: _startTime,
+                                  );
+                                  if (picked != null) {
+                                    setState(() => _startTime = picked);
+                                  }
+                                },
+                              ),
                             ),
-                          );
-                          if (picked != null) setState(() => _date = picked);
-                        },
-                      ),
-                      if (_error != null) ...[
-                        const SizedBox(height: 8),
-                        Text(_error!, style: TextStyle(color: Colors.red)),
-                      ],
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: _isLoading ? null : _submit,
-                        child:
-                            _isLoading
-                                ? const CircularProgressIndicator()
-                                : const Text('Create Event'),
+                        ],
                       ),
                     ],
                   ),
                 ),
+              ),
+              const SizedBox(height: 16),
+
+              // End Date and Time (Optional)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text(
+                            'End Date & Time',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const Spacer(),
+                          Switch(
+                            value: _endDate != null,
+                            onChanged: (value) {
+                              setState(() {
+                                if (value) {
+                                  _endDate = _startDate;
+                                  _endTime = TimeOfDay(
+                                    hour: _startTime.hour + 1,
+                                    minute: _startTime.minute,
+                                  );
+                                } else {
+                                  _endDate = null;
+                                  _endTime = null;
+                                }
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      if (_endDate != null) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ListTile(
+                                title: const Text('Date'),
+                                subtitle: Text(
+                                  '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}',
+                                ),
+                                leading: const Icon(Icons.calendar_today),
+                                onTap: () async {
+                                  final picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: _endDate!,
+                                    firstDate: _startDate,
+                                    lastDate: DateTime.now().add(
+                                      const Duration(days: 365),
+                                    ),
+                                  );
+                                  if (picked != null) {
+                                    setState(() => _endDate = picked);
+                                  }
+                                },
+                              ),
+                            ),
+                            if (!_isAllDay)
+                              Expanded(
+                                child: ListTile(
+                                  title: const Text('Time'),
+                                  subtitle: Text(
+                                    _endTime?.format(context) ?? '--:--',
+                                  ),
+                                  leading: const Icon(Icons.access_time),
+                                  onTap: () async {
+                                    final picked = await showTimePicker(
+                                      context: context,
+                                      initialTime: _endTime ?? _startTime,
+                                    );
+                                    if (picked != null) {
+                                      setState(() => _endTime = picked);
+                                    }
+                                  },
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Error Display
+              if (_error != null)
+                Card(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.error,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _error!,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              const SizedBox(height: 24),
+
+              // Create Button
+              FilledButton(
+                onPressed: _isLoading ? null : _submit,
+                child:
+                    _isLoading
+                        ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Text('Create Event'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

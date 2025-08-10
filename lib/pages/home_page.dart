@@ -3,11 +3,12 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:navysync/models/event.dart';
 import 'package:navysync/models/team.dart';
-import 'package:navysync/services/auth_service.dart';
-import 'package:navysync/models/permission.dart' as permissions;
+import 'package:navysync/providers/event_provider.dart';
+import 'package:navysync/providers/auth_provider.dart';
 
 class AppUserProfile {
   static Map<String, dynamic>? current;
@@ -26,14 +27,14 @@ class AppUserProfile {
   static List get roles => current?['roles'] ?? [];
 }
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   List<Event> _upcomingEvents = [];
   List<Team> _userTeams = [];
   bool _isLoading = true;
@@ -53,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  @override
   void initState() {
     super.initState();
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen((
@@ -109,49 +111,36 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadUpcomingEvents() async {
-    final now = DateTime.now();
-    final oneWeekFromNow = now.add(Duration(days: 7));
-
-    // There is no top-level 'events' collection. Instead, fetch events from each team the user is a member of.
-    List<Event> allEvents = [];
-    for (final team in _userTeams) {
-      final eventsSnapshot =
-          await FirebaseFirestore.instance
-              .collection('teams')
-              .doc(team.id)
-              .collection('events')
-              .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(now))
-              .where(
-                'date',
-                isLessThanOrEqualTo: Timestamp.fromDate(oneWeekFromNow),
-              )
-              .orderBy('date')
-              .get();
-
-      allEvents.addAll(
-        eventsSnapshot.docs.map((doc) {
-          final data = doc.data();
-          if (data is Map<String, dynamic>) {
-            return Event.fromJson({'id': doc.id, ...data, 'teamId': team.id});
-          } else {
-            return Event.fromJson({'id': doc.id, 'teamId': team.id});
-          }
-        }),
-      );
-    }
-
-    // Optionally sort and limit to 5 upcoming events
-    allEvents.sort((a, b) => a.date.compareTo(b.date));
-    _upcomingEvents =
-        allEvents.where((event) => _canUserAccessEvent(event)).take(5).toList();
+    // Events are now loaded via the provider system
+    // The UI will reactively update when the provider data changes
+    final eventsAsync = ref.read(upcomingUserEventsProvider);
+    await eventsAsync.when(
+      data: (events) async {
+        if (mounted) {
+          setState(() {
+            _upcomingEvents = events.take(5).toList();
+          });
+        }
+      },
+      loading: () async {
+        // Loading state is handled by the provider
+      },
+      error: (error, stack) async {
+        if (mounted) {
+          setState(() {
+            _error = error.toString();
+          });
+        }
+      },
+    );
   }
 
   bool _canUserAccessEvent(Event event) {
     // Example: check department/team access using cached profile
     final deptId = AppUserProfile.departmentId;
     final teams = _userTeams.map((t) => t.id).toList();
-    return (event.departmentId.isEmpty || event.departmentId == deptId) &&
-        (event.teamId.isEmpty || teams.contains(event.teamId));
+    return (event.departmentId?.isEmpty != false || event.departmentId == deptId) &&
+        (event.teamId?.isEmpty != false || teams.contains(event.teamId));
   }
 
   Future<void> _loadUserTeams() async {
@@ -205,6 +194,164 @@ class _HomeScreenState extends State<HomeScreen> {
       final deptSnapshot = await deptMembersQuery.get();
       _departmentMembersCount = deptSnapshot.docs.length;
     }
+  }
+
+  Widget _buildEnhancedEventCard(Event event) {
+    final isToday = _isEventToday(event.date);
+    final timeUntil = _getTimeUntilEvent(event.date);
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      margin: EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+        border:
+            isToday
+                ? Border.all(color: Color(0xFFE89C31), width: 2)
+                : Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: event.displayColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  event.visibilityIcon,
+                  color: event.displayColor,
+                  size: 20,
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            event.title,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: event.displayColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            event.visibilityLabel,
+                            style: TextStyle(
+                              color: event.displayColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        if (isToday) ...[
+                          SizedBox(width: 8),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Color(0xFFE89C31),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              'TODAY',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (event.location.isNotEmpty) ...[
+                      SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(Icons.location_on, size: 12, color: Colors.grey[600]),
+                          SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              event.location,
+                              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (event.description.isNotEmpty) ...[
+            SizedBox(height: 8),
+            Text(
+              event.description,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.black54,
+                height: 1.3,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                timeUntil,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isToday ? Color(0xFFE89C31) : Colors.grey[600],
+                  fontWeight: isToday ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+              Text(
+                _formatEventDateTime(event.date),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildEventCard(Event event) {
@@ -477,6 +624,30 @@ class _HomeScreenState extends State<HomeScreen> {
     return '${displayHour}:${minute.toString().padLeft(2, '0')} $period';
   }
 
+  String _formatEventDateTime(DateTime eventDate) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(Duration(days: 1));
+    final eventDay = DateTime(eventDate.year, eventDate.month, eventDate.day);
+
+    // Format time
+    final time = '${eventDate.hour.toString().padLeft(2, '0')}:${eventDate.minute.toString().padLeft(2, '0')}';
+
+    if (eventDay == today) {
+      return 'Today at $time';
+    } else if (eventDay == tomorrow) {
+      return 'Tomorrow at $time';
+    } else if (eventDate.year == now.year) {
+      // Same year, show month and day
+      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return '${months[eventDate.month - 1]} ${eventDate.day} at $time';
+    } else {
+      // Different year, show full date
+      return '${eventDate.day}/${eventDate.month}/${eventDate.year} at $time';
+    }
+  }
+
   IconData _getEventTypeIcon(String eventType) {
     switch (eventType.toLowerCase()) {
       case 'meeting':
@@ -719,48 +890,116 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            if (_upcomingEvents.isEmpty)
-              SliverToBoxAdapter(
-                child: Container(
-                  margin: EdgeInsets.all(16),
-                  padding: EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[200]!),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.event_available,
-                        size: 48,
-                        color: Colors.grey[400],
+            // Upcoming Events Section - Using Provider System
+            Consumer(
+              builder: (context, ref, child) {
+                final upcomingEventsAsync = ref.watch(upcomingUserEventsProvider);
+                
+                return upcomingEventsAsync.when(
+                  data: (events) {
+                    if (events.isEmpty) {
+                      return SliverToBoxAdapter(
+                        child: Container(
+                          margin: EdgeInsets.all(16),
+                          padding: EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey[200]!),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.event_available,
+                                size: 48,
+                                color: Colors.grey[400],
+                              ),
+                              SizedBox(height: 12),
+                              Text(
+                                'No upcoming events',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Check back later or create a new event',
+                                style: TextStyle(color: Colors.grey[500]),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    // Show up to 5 upcoming events
+                    final displayEvents = events.take(5).toList();
+                    
+                    return SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => _buildEnhancedEventCard(displayEvents[index]),
+                        childCount: displayEvents.length,
                       ),
-                      SizedBox(height: 12),
-                      Text(
-                        'No upcoming events',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[600],
+                    );
+                  },
+                  loading: () => SliverToBoxAdapter(
+                    child: Container(
+                      margin: EdgeInsets.all(16),
+                      padding: EdgeInsets.all(24),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            CircularProgressIndicator(color: Color(0xFF000080)),
+                            SizedBox(height: 16),
+                            Text(
+                              'Loading upcoming events...',
+                              style: TextStyle(color: Colors.grey[600]),
+                            ),
+                          ],
                         ),
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Check back later or create a new event',
-                        style: TextStyle(color: Colors.grey[500]),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              )
-            else
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => _buildEventCard(_upcomingEvents[index]),
-                  childCount: _upcomingEvents.length,
-                ),
-              ),
+                  error: (error, stack) => SliverToBoxAdapter(
+                    child: Container(
+                      margin: EdgeInsets.all(16),
+                      padding: EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.red[50],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.red[200]!),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 48,
+                            color: Colors.red[400],
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            'Error loading events',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red[600],
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            error.toString(),
+                            style: TextStyle(color: Colors.red[500]),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(16),

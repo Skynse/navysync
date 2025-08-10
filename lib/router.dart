@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:navysync/models/event.dart';
 import 'package:navysync/pages/auth/auth_gate.dart';
 import 'package:navysync/pages/auth/authentication_page.dart';
 import 'package:navysync/pages/auth/verify_email_page.dart';
@@ -8,55 +7,44 @@ import 'package:navysync/pages/home_page.dart';
 import 'package:navysync/pages/profile.dart';
 import 'package:navysync/pages/tasks.dart';
 import 'package:navysync/pages/team_details_view.dart';
-import 'package:navysync/pages/team_events_view.dart';
 import 'package:navysync/pages/teams.dart';
 import 'package:navysync/pages/team_manage_view.dart';
 import 'package:navysync/pages/calendar_page.dart';
 import 'package:navysync/pages/create_event_page.dart';
+import 'package:navysync/constants.dart';
 
 final router = GoRouter(
   initialLocation: '/auth_gate',
-
   routes: [
     GoRoute(
       path: '/auth_gate',
-      builder: (context, state) {
-        // This is where you would check if the user is authenticated
-        // and redirect accordingly. For now, we just return HomeScreen.
-        return AuthGate();
-      },
+      builder: (context, state) => const AuthGate(),
     ),
-
     GoRoute(
       path: '/authentication',
-      builder: (context, state) {
-        // This is where you would show the authentication page
-        return const AuthenticationPage();
-      },
+      builder: (context, state) => const AuthenticationPage(),
     ),
-
     GoRoute(
       path: '/verify_email',
       builder: (context, state) => const VerifyEmailPage(),
     ),
-
     StatefulShellRoute.indexedStack(
-      builder:
-          (context, state, navigationShell) =>
-              ScaffoldWithNestedNavigation(navigationShell: navigationShell),
-
+      builder: (context, state, navigationShell) =>
+          ScaffoldWithNestedNavigation(navigationShell: navigationShell),
       branches: [
         StatefulShellBranch(
           routes: [
-            GoRoute(path: '/home', builder: (context, state) => HomeScreen()),
+            GoRoute(
+              path: '/home',
+              builder: (context, state) => const HomeScreen(),
+            ),
           ],
         ),
-
         StatefulShellBranch(
           routes: [
             GoRoute(
               path: '/teams',
-              builder: (context, state) => TeamsView(),
+              builder: (context, state) => const TeamsView(),
               routes: [
                 GoRoute(
                   path: ':teamId',
@@ -64,31 +52,15 @@ final router = GoRouter(
                     final teamId = state.pathParameters['teamId']!;
                     return TeamDetailsView(teamId: teamId);
                   },
-
                   routes: [
-                    // Route for event details, passing the event object via extra
+                    GoRoute(
+                      path: 'manage',
+                      builder: (context, state) {
+                        final teamId = state.pathParameters['teamId']!;
+                        return TeamManageView(teamId: teamId);
+                      },
+                    ),
                   ],
-                ),
-
-                // GoRoute(
-                //   path: 'events/:eventId',
-                //   builder: (context, state) {
-                //     final event = state.extra as Event?;
-                //     if (event == null) {
-                //       // Handle missing event object, e.g., show error or fallback
-                //       return Scaffold(
-                //         body: Center(child: Text('Event not found')),
-                //       );
-                //     }
-                //     return TeamEventsView(eventObject: event);
-                //   },
-                // ),
-                GoRoute(
-                  path: ':teamId/manage',
-                  builder: (context, state) {
-                    final teamId = state.pathParameters['teamId']!;
-                    return TeamManageView(teamId: teamId);
-                  },
                 ),
               ],
             ),
@@ -96,14 +68,17 @@ final router = GoRouter(
         ),
         StatefulShellBranch(
           routes: [
-            GoRoute(path: '/tasks', builder: (context, state) => TasksView()),
+            GoRoute(
+              path: '/tasks',
+              builder: (context, state) => const TasksView(),
+            ),
           ],
         ),
         StatefulShellBranch(
           routes: [
             GoRoute(
               path: '/profile',
-              builder: (context, state) => ProfilePage(),
+              builder: (context, state) => const ProfilePage(),
             ),
           ],
         ),
@@ -111,63 +86,74 @@ final router = GoRouter(
           routes: [
             GoRoute(
               path: '/calendar',
-              builder: (context, state) => CalendarPage(),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/create-event',
-              builder: (context, state) => CreateEventPage(),
+              builder: (context, state) => const CalendarPage(),
             ),
           ],
         ),
       ],
     ),
+    // Standalone routes (not in bottom nav)
+    GoRoute(
+      path: '/create-event',
+      builder: (context, state) => const CreateEventPage(),
+    ),
   ],
 );
 
-class ScaffoldWithNestedNavigation extends StatefulWidget {
-  const ScaffoldWithNestedNavigation({Key? key, required this.navigationShell})
-    : super(key: key ?? const ValueKey('ScaffoldWithNestedNavigation'));
+class ScaffoldWithNestedNavigation extends StatelessWidget {
+  const ScaffoldWithNestedNavigation({
+    super.key,
+    required this.navigationShell,
+  });
+
   final StatefulNavigationShell navigationShell;
 
-  @override
-  State<ScaffoldWithNestedNavigation> createState() =>
-      _ScaffoldWithNestedNavigationState();
-}
-
-class _ScaffoldWithNestedNavigationState
-    extends State<ScaffoldWithNestedNavigation> {
   void _goBranch(int index) {
-    widget.navigationShell.goBranch(
+    navigationShell.goBranch(
       index,
-      initialLocation: index == widget.navigationShell.currentIndex,
+      initialLocation: index == navigationShell.currentIndex,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        body: widget.navigationShell,
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: widget.navigationShell.currentIndex,
-          onTap: (index) => setState(() => _goBranch(index)),
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Teams'),
-            BottomNavigationBarItem(icon: Icon(Icons.task), label: "Tasks"),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-          ],
-          selectedItemColor: Colors.black,
-          unselectedItemColor: Colors.grey,
-          iconSize: 30,
-          showSelectedLabels: false,
-          showUnselectedLabels: false,
-          type: BottomNavigationBarType.fixed,
-        ),
+    return Scaffold(
+      body: navigationShell,
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: navigationShell.currentIndex,
+        onTap: _goBranch,
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: AppColors.primaryBlue,
+        unselectedItemColor: AppColors.darkGray,
+        backgroundColor: AppColors.white,
+        elevation: 8,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people_outline),
+            activeIcon: Icon(Icons.people),
+            label: 'Teams',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.task_outlined),
+            activeIcon: Icon(Icons.task),
+            label: 'Tasks',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today_outlined),
+            activeIcon: Icon(Icons.calendar_today),
+            label: 'Calendar',
+          ),
+        ],
       ),
     );
   }

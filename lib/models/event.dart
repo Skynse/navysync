@@ -1,4 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import '../constants.dart';
+
+enum EventVisibility {
+  organization, // Everyone in the organization can see
+  department,   // Only department members can see
+  team,        // Only team members can see
+  private,     // Only invited attendees can see
+}
 
 class Event {
   final String id;
@@ -9,13 +18,19 @@ class Event {
   final Timestamp? endTime;
   final String location;
   final String createdBy;
-  final String event_type; // 'departmental', 'team', 'organization'
-  final String departmentId; // Required if event_type is 'departmental'
-  final String teamId; // Required if event_type is 'team'
-  final List<String> attendees; // List of user IDs who can attend
-  final String visibility; // 'public', 'department', 'team', 'private'
+  final EventVisibility visibility;
+  final String? departmentId; // Required if visibility is department
+  final String? teamId; // Required if visibility is team
+  final List<String> attendees; // List of user IDs who can attend (for private events)
+  final List<String> tags; // Optional tags for categorization
+  final String? imageUrl; // Optional event image
+  final bool isRecurring;
+  final Map<String, dynamic>? recurringPattern; // For recurring events
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final bool isActive;
 
-  Event({
+  const Event({
     required this.id,
     required this.title,
     required this.description,
@@ -24,33 +39,75 @@ class Event {
     this.endTime,
     required this.location,
     required this.createdBy,
-    required this.event_type,
-    this.departmentId = '',
-    this.teamId = '',
+    required this.visibility,
+    this.departmentId,
+    this.teamId,
     this.attendees = const [],
-    this.visibility = 'department',
+    this.tags = const [],
+    this.imageUrl,
+    this.isRecurring = false,
+    this.recurringPattern,
+    required this.createdAt,
+    required this.updatedAt,
+    this.isActive = true,
   });
+
+  factory Event.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Event.fromJson({
+      'id': doc.id,
+      ...data,
+    });
+  }
 
   factory Event.fromJson(Map<String, dynamic> json) {
     return Event(
-      id: json['id'],
-      title: json['title'],
-      description: json['description'],
-      date:
-          json['date'] is Timestamp
-              ? (json['date'] as Timestamp).toDate()
-              : DateTime.parse(json['date']),
-
-      startTime: json['startTime'],
-      endTime: json['endTime'],
-      location: json['location'],
-      createdBy: json['createdBy'],
-      event_type: json['event_type'] ?? 'departmental',
-      departmentId: json['departmentId'] ?? '',
-      teamId: json['teamId'] ?? '',
+      id: json['id'] ?? '',
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      date: json['date'] is Timestamp
+          ? (json['date'] as Timestamp).toDate()
+          : json['date'] is String
+              ? DateTime.tryParse(json['date']) ?? DateTime.now()
+              : DateTime.now(),
+      startTime: json['startTime'] as Timestamp?,
+      endTime: json['endTime'] as Timestamp?,
+      location: json['location'] ?? '',
+      createdBy: json['createdBy'] ?? '',
+      visibility: _parseVisibility(json['visibility']),
+      departmentId: json['departmentId'],
+      teamId: json['teamId'],
       attendees: List<String>.from(json['attendees'] ?? []),
-      visibility: json['visibility'] ?? 'department',
+      tags: List<String>.from(json['tags'] ?? []),
+      imageUrl: json['imageUrl'],
+      isRecurring: json['isRecurring'] ?? false,
+      recurringPattern: json['recurringPattern'] as Map<String, dynamic>?,
+      createdAt: json['createdAt'] is Timestamp
+          ? (json['createdAt'] as Timestamp).toDate()
+          : DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      updatedAt: json['updatedAt'] is Timestamp
+          ? (json['updatedAt'] as Timestamp).toDate()
+          : DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
+      isActive: json['isActive'] ?? true,
     );
+  }
+
+  static EventVisibility _parseVisibility(dynamic visibility) {
+    if (visibility is String) {
+      switch (visibility) {
+        case 'organization':
+          return EventVisibility.organization;
+        case 'department':
+          return EventVisibility.department;
+        case 'team':
+          return EventVisibility.team;
+        case 'private':
+          return EventVisibility.private;
+        default:
+          return EventVisibility.organization;
+      }
+    }
+    return EventVisibility.organization;
   }
 
   Map<String, dynamic> toJson() {
@@ -58,15 +115,29 @@ class Event {
       'id': id,
       'title': title,
       'description': description,
-      'date': date.toIso8601String(),
+      'date': Timestamp.fromDate(date),
+      'startTime': startTime,
+      'endTime': endTime,
       'location': location,
-      'creatorId': createdBy,
-      'event_type': event_type,
+      'createdBy': createdBy,
+      'visibility': visibility.name,
       'departmentId': departmentId,
       'teamId': teamId,
       'attendees': attendees,
-      'visibility': visibility,
+      'tags': tags,
+      'imageUrl': imageUrl,
+      'isRecurring': isRecurring,
+      'recurringPattern': recurringPattern,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': Timestamp.fromDate(updatedAt),
+      'isActive': isActive,
     };
+  }
+
+  Map<String, dynamic> toFirestore() {
+    final data = toJson();
+    data.remove('id'); // Don't include ID in Firestore document
+    return data;
   }
 
   // Helper method to check if a user can access this event
@@ -77,32 +148,121 @@ class Event {
     List<String> userTeamIds,
   ) {
     // Always allow the creator and admins
-    if (userId == createdBy || userRoles.contains('admin')) {
+    if (userId == createdBy || userRoles.contains(UserRoles.admin)) {
       return true;
     }
 
-    // Check based on event type
-    switch (event_type) {
-      case 'departmental':
-        // Department members or department heads can access
-        if (departmentId == userDepartmentId) {
-          return true;
-        }
-        break;
-      case 'team':
-        // Team members or team leaders can access
-        if (userTeamIds.contains(teamId)) {
-          return true;
-        }
-        break;
-      case 'organization':
+    // Check based on event visibility
+    switch (visibility) {
+      case EventVisibility.organization:
         // Everyone in the organization can access
         return true;
-      case 'private':
+      case EventVisibility.department:
+        // Department members or department heads can access
+        return departmentId != null && departmentId == userDepartmentId;
+      case EventVisibility.team:
+        // Team members or team leaders can access
+        return teamId != null && userTeamIds.contains(teamId);
+      case EventVisibility.private:
         // Only specifically invited users can access
         return attendees.contains(userId);
     }
+  }
 
-    return false;
+  // Helper method to get display color based on event visibility
+  Color get displayColor {
+    switch (visibility) {
+      case EventVisibility.organization:
+        return AppColors.gold;
+      case EventVisibility.department:
+        return AppColors.primaryBlue;
+      case EventVisibility.team:
+        return AppColors.lightBlue;
+      case EventVisibility.private:
+        return AppColors.darkGray;
+    }
+  }
+
+  // Helper method to get visibility icon
+  IconData get visibilityIcon {
+    switch (visibility) {
+      case EventVisibility.organization:
+        return Icons.public;
+      case EventVisibility.department:
+        return Icons.business;
+      case EventVisibility.team:
+        return Icons.group;
+      case EventVisibility.private:
+        return Icons.lock;
+    }
+  }
+
+  // Helper method to get visibility label
+  String get visibilityLabel {
+    switch (visibility) {
+      case EventVisibility.organization:
+        return 'Organization';
+      case EventVisibility.department:
+        return 'Department';
+      case EventVisibility.team:
+        return 'Team';
+      case EventVisibility.private:
+        return 'Private';
+    }
+  }
+
+  Event copyWith({
+    String? title,
+    String? description,
+    DateTime? date,
+    Timestamp? startTime,
+    Timestamp? endTime,
+    String? location,
+    EventVisibility? visibility,
+    String? departmentId,
+    String? teamId,
+    List<String>? attendees,
+    List<String>? tags,
+    String? imageUrl,
+    bool? isRecurring,
+    Map<String, dynamic>? recurringPattern,
+    DateTime? updatedAt,
+    bool? isActive,
+  }) {
+    return Event(
+      id: id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      date: date ?? this.date,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      location: location ?? this.location,
+      createdBy: createdBy,
+      visibility: visibility ?? this.visibility,
+      departmentId: departmentId ?? this.departmentId,
+      teamId: teamId ?? this.teamId,
+      attendees: attendees ?? this.attendees,
+      tags: tags ?? this.tags,
+      imageUrl: imageUrl ?? this.imageUrl,
+      isRecurring: isRecurring ?? this.isRecurring,
+      recurringPattern: recurringPattern ?? this.recurringPattern,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? DateTime.now(),
+      isActive: isActive ?? this.isActive,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Event && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  String toString() {
+    return 'Event(id: $id, title: $title, visibility: ${visibility.name})';
   }
 }

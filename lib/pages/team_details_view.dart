@@ -94,11 +94,19 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
 
       // Fetch team events
       final now = DateTime.now();
+      // final eventsSnapshot =
+      //     await FirebaseFirestore.instance
+      //         .collection('teams')
+      //         .doc(widget.teamId)
+      //         .collection('events')
+      //         .where('date', isGreaterThanOrEqualTo: now)
+      //         .orderBy('date')
+      //         .limit(5)
+      //         .get();
       final eventsSnapshot =
           await FirebaseFirestore.instance
-              .collection('teams')
-              .doc(widget.teamId)
-              .collection('events')
+              .collection("events")
+              .where('teamId', isEqualTo: widget.teamId)
               .where('date', isGreaterThanOrEqualTo: now)
               .orderBy('date')
               .limit(5)
