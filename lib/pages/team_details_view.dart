@@ -547,46 +547,6 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
           ),
         ),
       ),
-      floatingActionButton:
-          _canManageTeam
-              ? FloatingActionButton.extended(
-                heroTag: 'create_team_action',
-                onPressed: () {
-                  showModalBottomSheet(
-                    context: context,
-                    builder:
-                        (context) => Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ListTile(
-                              leading: const Icon(Icons.announcement),
-                              title: const Text('Create Announcement'),
-                              onTap: () {
-                                Navigator.pop(context);
-                                context.push(
-                                  '/teams/${widget.teamId}/announcement/create',
-                                );
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.event),
-                              title: const Text('Create Event'),
-                              onTap: () {
-                                Navigator.pop(context);
-                                context.push(
-                                  '/events/create?teamId=${widget.teamId}',
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                  );
-                },
-                icon: const Icon(Icons.add),
-                label: const Text('Create'),
-                backgroundColor: Colors.blue.shade800,
-              )
-              : null,
     );
   }
 

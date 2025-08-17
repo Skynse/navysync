@@ -16,10 +16,7 @@ import 'package:navysync/constants.dart';
 final router = GoRouter(
   initialLocation: '/auth_gate',
   routes: [
-    GoRoute(
-      path: '/auth_gate',
-      builder: (context, state) => const AuthGate(),
-    ),
+    GoRoute(path: '/auth_gate', builder: (context, state) => const AuthGate()),
     GoRoute(
       path: '/authentication',
       builder: (context, state) => const AuthenticationPage(),
@@ -29,8 +26,9 @@ final router = GoRouter(
       builder: (context, state) => const VerifyEmailPage(),
     ),
     StatefulShellRoute.indexedStack(
-      builder: (context, state, navigationShell) =>
-          ScaffoldWithNestedNavigation(navigationShell: navigationShell),
+      builder:
+          (context, state, navigationShell) =>
+              ScaffoldWithNestedNavigation(navigationShell: navigationShell),
       branches: [
         StatefulShellBranch(
           routes: [

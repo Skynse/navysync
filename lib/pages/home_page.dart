@@ -139,7 +139,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Example: check department/team access using cached profile
     final deptId = AppUserProfile.departmentId;
     final teams = _userTeams.map((t) => t.id).toList();
-    return (event.departmentId?.isEmpty != false || event.departmentId == deptId) &&
+    return (event.departmentId?.isEmpty != false ||
+            event.departmentId == deptId) &&
         (event.teamId?.isEmpty != false || teams.contains(event.teamId));
   }
 
@@ -298,12 +299,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       SizedBox(height: 2),
                       Row(
                         children: [
-                          Icon(Icons.location_on, size: 12, color: Colors.grey[600]),
+                          Icon(
+                            Icons.location_on,
+                            size: 12,
+                            color: Colors.grey[600],
+                          ),
                           SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               event.location,
-                              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[600],
+                              ),
                             ),
                           ),
                         ],
@@ -631,7 +639,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final eventDay = DateTime(eventDate.year, eventDate.month, eventDate.day);
 
     // Format time
-    final time = '${eventDate.hour.toString().padLeft(2, '0')}:${eventDate.minute.toString().padLeft(2, '0')}';
+    final time =
+        '${eventDate.hour.toString().padLeft(2, '0')}:${eventDate.minute.toString().padLeft(2, '0')}';
 
     if (eventDay == today) {
       return 'Today at $time';
@@ -639,8 +648,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return 'Tomorrow at $time';
     } else if (eventDate.year == now.year) {
       // Same year, show month and day
-      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      final months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
       return '${months[eventDate.month - 1]} ${eventDate.day} at $time';
     } else {
       // Different year, show full date
@@ -893,8 +914,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // Upcoming Events Section - Using Provider System
             Consumer(
               builder: (context, ref, child) {
-                final upcomingEventsAsync = ref.watch(upcomingUserEventsProvider);
-                
+                final upcomingEventsAsync = ref.watch(
+                  upcomingUserEventsProvider,
+                );
+
                 return upcomingEventsAsync.when(
                   data: (events) {
                     if (events.isEmpty) {
@@ -936,67 +959,72 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                     // Show up to 5 upcoming events
                     final displayEvents = events.take(5).toList();
-                    
+
                     return SliverList(
                       delegate: SliverChildBuilderDelegate(
-                        (context, index) => _buildEnhancedEventCard(displayEvents[index]),
+                        (context, index) =>
+                            _buildEnhancedEventCard(displayEvents[index]),
                         childCount: displayEvents.length,
                       ),
                     );
                   },
-                  loading: () => SliverToBoxAdapter(
-                    child: Container(
-                      margin: EdgeInsets.all(16),
-                      padding: EdgeInsets.all(24),
-                      child: Center(
-                        child: Column(
-                          children: [
-                            CircularProgressIndicator(color: Color(0xFF000080)),
-                            SizedBox(height: 16),
-                            Text(
-                              'Loading upcoming events...',
-                              style: TextStyle(color: Colors.grey[600]),
+                  loading:
+                      () => SliverToBoxAdapter(
+                        child: Container(
+                          margin: EdgeInsets.all(16),
+                          padding: EdgeInsets.all(24),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                CircularProgressIndicator(
+                                  color: Color(0xFF000080),
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  'Loading upcoming events...',
+                                  style: TextStyle(color: Colors.grey[600]),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  error: (error, stack) => SliverToBoxAdapter(
-                    child: Container(
-                      margin: EdgeInsets.all(16),
-                      padding: EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.red[50],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.red[200]!),
+                  error:
+                      (error, stack) => SliverToBoxAdapter(
+                        child: Container(
+                          margin: EdgeInsets.all(16),
+                          padding: EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.red[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.red[200]!),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                size: 48,
+                                color: Colors.red[400],
+                              ),
+                              SizedBox(height: 12),
+                              Text(
+                                'Error loading events',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red[600],
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                error.toString(),
+                                style: TextStyle(color: Colors.red[500]),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            size: 48,
-                            color: Colors.red[400],
-                          ),
-                          SizedBox(height: 12),
-                          Text(
-                            'Error loading events',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red[600],
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            error.toString(),
-                            style: TextStyle(color: Colors.red[500]),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
                 );
               },
             ),
