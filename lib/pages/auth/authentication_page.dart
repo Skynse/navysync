@@ -179,86 +179,95 @@ class _AuthenticationPageState extends State<AuthenticationPage>
               ),
               Align(
                 alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () {
-                    // Password recovery logic
-                    // Show dialog to enter email
-                    showDialog(
-                      context: context,
-                      builder:
-                          (context) => AlertDialog(
-                            title: Text('Reset Password'),
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Enter your email to receive a reset link',
+                child: Row(
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        // Password recovery logic
+                        // Show dialog to enter email
+                        showDialog(
+                          context: context,
+                          builder:
+                              (context) => AlertDialog(
+                                title: Text('Reset Password'),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Enter your email to receive a reset link',
+                                    ),
+                                    SizedBox(height: 16),
+                                    TextFormField(
+                                      controller: TextEditingController(
+                                        text: emailController.text,
+                                      ),
+                                      decoration: InputDecoration(
+                                        labelText: 'Email',
+                                        border: OutlineInputBorder(),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                SizedBox(height: 16),
-                                TextFormField(
-                                  controller: TextEditingController(
-                                    text: emailController.text,
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: Text('Cancel'),
                                   ),
-                                  decoration: InputDecoration(
-                                    labelText: 'Email',
-                                    border: OutlineInputBorder(),
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      // Send password reset email
+                                      Navigator.pop(context);
+                                      try {
+                                        await FirebaseAuth.instance
+                                            .sendPasswordResetEmail(
+                                              email: emailController.text,
+                                            );
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Password reset link sent to ${emailController.text}',
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      } catch (error) {
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Failed to send reset link: $error',
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Color(0xFF000080),
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    child: Text('Send Reset Link'),
                                   ),
-                                ),
-                              ],
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: Text('Cancel'),
+                                ],
                               ),
-                              ElevatedButton(
-                                onPressed: () async {
-                                  // Send password reset email
-                                  Navigator.pop(context);
-                                  try {
-                                    await FirebaseAuth.instance
-                                        .sendPasswordResetEmail(
-                                          email: emailController.text,
-                                        );
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Password reset link sent to ${emailController.text}',
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  } catch (error) {
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Failed to send reset link: $error',
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  }
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Color(0xFF000080),
-                                  foregroundColor: Colors.white,
-                                ),
-                                child: Text('Send Reset Link'),
-                              ),
-                            ],
-                          ),
-                    );
-                  },
-                  child: Text(
-                    'Forgot Password?',
-                    style: TextStyle(color: Color(0xFF000080)),
-                  ),
+                        );
+                      },
+                      child: Text(
+                        'Forgot Password?',
+                        style: TextStyle(color: Color(0xFF000080)),
+                      ),
+                    ),
+                    Spacer(),
+                    TextButton(onPressed: () {
+                      
+                    }, child: Text("View as Guest"),
+                    ),
+                  ],
                 ),
               ),
               SizedBox(height: 24),
@@ -406,6 +415,7 @@ class _AuthenticationPageState extends State<AuthenticationPage>
                           ),
                         ),
               ),
+              
             ],
           ),
         ),
