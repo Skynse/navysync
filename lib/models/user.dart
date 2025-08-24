@@ -15,6 +15,7 @@ class NavySyncUser {
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isActive;
+  final String? phoneNumber;
 
   const NavySyncUser({
     required this.id,
@@ -28,6 +29,7 @@ class NavySyncUser {
     required this.createdAt,
     required this.updatedAt,
     this.isActive = true,
+    this.phoneNumber,
   });
 
   factory NavySyncUser.fromFirestore(DocumentSnapshot doc) {
@@ -55,6 +57,7 @@ class NavySyncUser {
               ? (map['updatedAt'] as Timestamp).toDate()
               : DateTime.tryParse(map['updatedAt'] ?? '') ?? DateTime.now(),
       isActive: map['isActive'] ?? true,
+      phoneNumber: map['phoneNumber'],
     );
   }
 
@@ -70,6 +73,7 @@ class NavySyncUser {
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
       'isActive': isActive,
+      'phoneNumber': phoneNumber,
     };
   }
 
@@ -164,6 +168,7 @@ class NavySyncUser {
     Map<String, dynamic>? permissions,
     DateTime? updatedAt,
     bool? isActive,
+    String? phoneNumber,
   }) {
     return NavySyncUser(
       id: id,
@@ -177,6 +182,7 @@ class NavySyncUser {
       createdAt: createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
       isActive: isActive ?? this.isActive,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
     );
   }
 

@@ -1,8 +1,11 @@
+// https://appwrite.io/docs/quick-starts/flutter
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import 'package:navysync/models/user.dart';
+import 'package:navysync/pages/guest_page.dart';
 
 class AuthenticationPage extends StatefulWidget {
   const AuthenticationPage({super.key});
@@ -263,9 +266,18 @@ class _AuthenticationPageState extends State<AuthenticationPage>
                       ),
                     ),
                     Spacer(),
-                    TextButton(onPressed: () {
-                      
-                    }, child: Text("View as Guest"),
+                    TextButton(
+                      onPressed: () async {
+                        if (mounted) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => GuestPage(),
+                            ),
+                          );
+                        }
+                      },
+                      child: Text("Continue as Guest"),
                     ),
                   ],
                 ),
@@ -415,7 +427,6 @@ class _AuthenticationPageState extends State<AuthenticationPage>
                           ),
                         ),
               ),
-              
             ],
           ),
         ),
@@ -664,14 +675,12 @@ class _AuthenticationPageState extends State<AuthenticationPage>
                                   FirebaseFirestore.instance
                                       .collection('users')
                                       .doc(userCredential.user!.uid)
-                                      .set(
-                                        {
-                                          'id': userCredential.user!.uid,
-                                          'profilePictureUrl': '',
-                                          'name': 'User',
-                                          'roles': ['unassigned'],
-                                        }
-                                      )
+                                      .set({
+                                        'id': userCredential.user!.uid,
+                                        'profilePictureUrl': '',
+                                        'name': 'User',
+                                        'roles': ['unassigned'],
+                                      })
                                       .then((_) {
                                         print(
                                           'User profile created in Firestore',
@@ -756,6 +765,8 @@ class _AuthenticationPageState extends State<AuthenticationPage>
       return 'The password is too weak. Please use a stronger password.';
     } else if (errorCode.contains('network-request-failed')) {
       return 'Network error. Please check your internet connection.';
+    } else if (errorCode.contains('admin-restricted-operation')) {
+      return 'User registration is currently disabled. Please contact an administrator.';
     } else {
       return 'Registration failed: ${errorCode.split(']').last.trim()}';
     }

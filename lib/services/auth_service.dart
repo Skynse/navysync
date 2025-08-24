@@ -7,7 +7,7 @@ import 'repositories/user_repository.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final UserRepository _userRepository = UserRepository();
-  
+
   NavySyncUser? _currentUser;
 
   // Get current user data
@@ -72,6 +72,13 @@ class AuthService {
       }
 
       return credential;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'admin-restricted-operation') {
+        throw Exception(
+          'User registration is currently disabled. Please contact an administrator.',
+        );
+      }
+      throw Exception('Failed to create account: ${e.message}');
     } catch (e) {
       throw Exception('Failed to create account: $e');
     }
@@ -158,8 +165,10 @@ class AuthService {
 
   // Check user roles
   bool isAdmin() => _currentUser?.isAdmin() ?? false;
-  bool isDepartmentHead([String? deptId]) => _currentUser?.isDepartmentHead(deptId) ?? false;
-  bool isTeamLeader([String? teamId]) => _currentUser?.isTeamLeader(teamId) ?? false;
+  bool isDepartmentHead([String? deptId]) =>
+      _currentUser?.isDepartmentHead(deptId) ?? false;
+  bool isTeamLeader([String? teamId]) =>
+      _currentUser?.isTeamLeader(teamId) ?? false;
 
   // Delete account
   Future<void> deleteAccount() async {
@@ -171,10 +180,10 @@ class AuthService {
     try {
       // Delete user data from Firestore
       await _userRepository.delete(_currentUser!.id);
-      
+
       // Delete Firebase Auth account
       await user.delete();
-      
+
       _currentUser = null;
     } catch (e) {
       throw Exception('Failed to delete account: $e');
