@@ -1,9 +1,9 @@
 import 'package:intl/intl.dart';
 
 class DateTimeUtils {
-  static final DateFormat _dateFormat = DateFormat('MMM dd, yyyy');
+  static final DateFormat _dateFormat = DateFormat('MM/dd/yyyy');
   static final DateFormat _timeFormat = DateFormat('hh:mm a');
-  static final DateFormat _dateTimeFormat = DateFormat('MMM dd, yyyy hh:mm a');
+  static final DateFormat _dateTimeFormat = DateFormat('MM/dd/yyyy hh:mm a');
 
   // Format date only
   static String formatDate(DateTime date) {

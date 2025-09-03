@@ -19,14 +19,14 @@ class CalendarPage extends ConsumerWidget {
           'Calendar',
           style: TextStyle(
             color: AppColors.white,
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
+            fontWeight: FontWeight.bold,
           ),
         ),
         backgroundColor: AppColors.navyBlue,
         elevation: 2,
         shadowColor: AppColors.navyBlue.withOpacity(0.3),
         iconTheme: const IconThemeData(color: AppColors.white),
+        centerTitle: false,
       ),
       body: userEventsAsync.when(
         data: (events) {
@@ -66,22 +66,24 @@ class CalendarPage extends ConsumerWidget {
               dataSource: _EventDataSource(appointments),
               monthViewSettings: MonthViewSettings(
                 appointmentDisplayMode: MonthAppointmentDisplayMode.appointment,
+                appointmentDisplayCount: 2, // Limit number of appointments shown per day
                 showAgenda: true,
+                agendaViewHeight: 200, // Reduce agenda height
                 agendaStyle: AgendaStyle(
                   backgroundColor: AppColors.lightGray,
                   appointmentTextStyle: const TextStyle(
                     color: AppColors.navyBlue,
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
                   dayTextStyle: const TextStyle(
                     color: AppColors.darkGray,
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
                   dateTextStyle: const TextStyle(
                     color: AppColors.navyBlue,
-                    fontSize: 24,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -107,29 +109,22 @@ class CalendarPage extends ConsumerWidget {
                 return Container(
                   width: details.bounds.width,
                   height: details.bounds.height,
-                  margin: const EdgeInsets.all(1),
+                  margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
                   decoration: BoxDecoration(
                     color: appointment.color,
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusS),
-                    boxShadow: [
-                      BoxShadow(
-                        color: appointment.color.withOpacity(0.3),
-                        blurRadius: 2,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: AppDimensions.paddingXS,
-                      vertical: 2,
+                      horizontal: 4,
+                      vertical: 1,
                     ),
                     child: Text(
                       appointment.subject,
                       style: const TextStyle(
                         color: AppColors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,

@@ -82,7 +82,18 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: Text('My Profile'), centerTitle: true),
+        appBar: AppBar(
+          title: const Text(
+            'My Profile',
+            style: TextStyle(
+              color: AppColors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          backgroundColor: AppColors.navyBlue,
+          centerTitle: false,
+          iconTheme: const IconThemeData(color: AppColors.white),
+        ),
         body: Center(child: CircularProgressIndicator()),
       );
     }
@@ -158,11 +169,20 @@ class _ProfilePageState extends State<ProfilePage> {
     ];
     return Scaffold(
       appBar: AppBar(
-        title: Text('My Profile'),
-        centerTitle: true,
+        title: const Text(
+          'My Profile',
+          style: TextStyle(
+            color: AppColors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: AppColors.navyBlue,
+        elevation: 2,
+        iconTheme: const IconThemeData(color: AppColors.white),
+        centerTitle: false,
         actions: [
           IconButton(
-            icon: Icon(Icons.edit),
+            icon: const Icon(Icons.edit, color: AppColors.white),
             onPressed: () {
               // Navigate to edit profile page
             },

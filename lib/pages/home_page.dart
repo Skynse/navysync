@@ -10,6 +10,7 @@ import 'package:navysync/models/event.dart';
 import 'package:navysync/models/team.dart';
 import 'package:navysync/providers/event_provider.dart';
 import 'package:navysync/providers/auth_provider.dart';
+import '../constants.dart';
 
 class AppUserProfile {
   static Map<String, dynamic>? current;
@@ -720,7 +721,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(color: Color(0xFF000080)),
+              CircularProgressIndicator(color: AppColors.navyBlue),
               SizedBox(height: 16),
               Text(
                 'Loading your dashboard...',
@@ -772,7 +773,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               pinned: true,
               elevation: 0,
               stretch: true,
-              backgroundColor: Color(0xFF000080),
+              backgroundColor: AppColors.navyBlue,
               flexibleSpace: FlexibleSpaceBar(
                 titlePadding: EdgeInsets.only(left: 20, bottom: 16),
                 title: Text(
@@ -780,7 +781,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 20,
                   ),
                 ),
                 background: Container(
@@ -788,7 +788,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [Color(0xFF000080), Color(0xFF0000B3)],
+                      colors: [AppColors.navyBlue, AppColors.primaryBlue],
                     ),
                   ),
                 ),
@@ -865,6 +865,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             icon: Icons.event_available,
                             color: Color(0xFF000080),
                             subtitle: "accessible to you",
+                            onTap: () => context.go('/calendar'),
                           ),
                         ),
                         SizedBox(
@@ -903,7 +904,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             child: Text(
                               "View All",
                               style: TextStyle(
-                                color: Color(0xFF000080),
+                                color: AppColors.navyBlue,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -981,7 +982,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             child: Column(
                               children: [
                                 CircularProgressIndicator(
-                                  color: Color(0xFF000080),
+                                  color: AppColors.navyBlue,
                                 ),
                                 SizedBox(height: 16),
                                 Text(

@@ -198,8 +198,17 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Event'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: const Text(
+          'Create Event',
+          style: TextStyle(
+            color: AppColors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: AppColors.navyBlue,
+        elevation: 2,
+        iconTheme: const IconThemeData(color: AppColors.white),
+        centerTitle: false,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -380,7 +389,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                             child: ListTile(
                               title: const Text('Date'),
                               subtitle: Text(
-                                '${_startDate.day}/${_startDate.month}/${_startDate.year}',
+                                '${_startDate.month}/${_startDate.day}/${_startDate.year}',
                               ),
                               leading: const Icon(Icons.calendar_today),
                               onTap: () async {
@@ -464,7 +473,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                               child: ListTile(
                                 title: const Text('Date'),
                                 subtitle: Text(
-                                  '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}',
+                                  '${_endDate!.month}/${_endDate!.day}/${_endDate!.year}',
                                 ),
                                 leading: const Icon(Icons.calendar_today),
                                 onTap: () async {

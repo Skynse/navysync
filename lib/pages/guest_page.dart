@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:navysync/models/team.dart';
 import 'package:navysync/models/user.dart';
+import '../constants.dart';
 
 class GuestPage extends StatefulWidget {
   const GuestPage({super.key});
@@ -97,7 +98,18 @@ class _GuestPageState extends State<GuestPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Guest Page')),
+      appBar: AppBar(
+        title: const Text(
+          'Guest Page',
+          style: TextStyle(
+            color: AppColors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: AppColors.navyBlue,
+        centerTitle: false,
+        iconTheme: const IconThemeData(color: AppColors.white),
+      ),
       body: FutureBuilder<Map<String, List<dynamic>>>(
         future: loadTeams(),
         builder: (context, snapshot) {
@@ -136,7 +148,18 @@ class _TeamPreviewPageState extends State<TeamPreviewPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.team.name)),
+      appBar: AppBar(
+        title: Text(
+          widget.team.name,
+          style: const TextStyle(
+            color: AppColors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: AppColors.navyBlue,
+        centerTitle: false,
+        iconTheme: const IconThemeData(color: AppColors.white),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -144,7 +167,9 @@ class _TeamPreviewPageState extends State<TeamPreviewPage> {
           children: [
             Text(
               widget.team.name,
-              style: Theme.of(context).textTheme.headlineSmall,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             Text(
               'Team Leader: ${widget.leader?.name ?? 'Unknown'}',

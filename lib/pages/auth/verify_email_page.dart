@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../constants.dart';
 
 class VerifyEmailPage extends StatefulWidget {
   const VerifyEmailPage({super.key});
@@ -18,7 +19,16 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
     final user = FirebaseAuth.instance.currentUser;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Verify Your Email'),
+        title: const Text(
+          'Verify Your Email',
+          style: TextStyle(
+            color: AppColors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: AppColors.navyBlue,
+        centerTitle: false,
+        iconTheme: const IconThemeData(color: AppColors.white),
         automaticallyImplyLeading: false,
       ),
       body: Center(

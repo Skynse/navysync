@@ -7,6 +7,7 @@ import 'package:navysync/models/team.dart';
 import 'package:navysync/models/user.dart';
 import 'package:navysync/pages/team_details_view.dart';
 import 'package:navysync/services/auth_service.dart';
+import '../constants.dart';
 
 class TeamsView extends StatefulWidget {
   const TeamsView({super.key});
@@ -68,15 +69,15 @@ class _TeamsViewState extends State<TeamsView> {
       appBar: AppBar(
         title: const Text(
           'Teams',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: AppColors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 0,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(color: Colors.grey[200], height: 1),
-        ),
+        backgroundColor: AppColors.navyBlue,
+        elevation: 2,
+        iconTheme: const IconThemeData(color: AppColors.white),
+        centerTitle: false,
       ),
       body: StreamBuilder<List<Team>>(
         stream: _teamsStream,
@@ -138,7 +139,7 @@ class _TeamsViewState extends State<TeamsView> {
                       icon: const Icon(Icons.add),
                       label: const Text('Create Team'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
+                        backgroundColor: AppColors.navyBlue,
                         foregroundColor: Colors.white,
                       ),
                     ),
@@ -180,12 +181,12 @@ class _TeamsViewState extends State<TeamsView> {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: Colors.blue[50],
+                                  color: AppColors.navyBlue.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Icon(
                                   Icons.groups,
-                                  color: Colors.blue[600],
+                                  color: AppColors.navyBlue,
                                   size: 20,
                                 ),
                               ),
@@ -293,7 +294,7 @@ class _TeamsViewState extends State<TeamsView> {
           _canCreateTeam()
               ? FloatingActionButton(
                 onPressed: _showCreateTeamDialog,
-                backgroundColor: Colors.blue,
+                backgroundColor: AppColors.navyBlue,
                 foregroundColor: Colors.white,
                 child: const Icon(Icons.add),
               )
@@ -404,7 +405,7 @@ class _TeamCreateDialogState extends State<TeamCreateDialog> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.blue[50],
+                color: AppColors.navyBlue.withOpacity(0.1),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(16),
                   topRight: Radius.circular(16),
@@ -412,7 +413,7 @@ class _TeamCreateDialogState extends State<TeamCreateDialog> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.groups, color: Colors.blue[600]),
+                  Icon(Icons.groups, color: AppColors.navyBlue),
                   const SizedBox(width: 12),
                   const Text(
                     'Create New Team',
@@ -521,7 +522,7 @@ class _TeamCreateDialogState extends State<TeamCreateDialog> {
                                         style: TextStyle(
                                           color:
                                               isCurrentUser
-                                                  ? Colors.blue[600]
+                                                  ? AppColors.navyBlue
                                                   : null,
                                           fontWeight:
                                               isCurrentUser
@@ -595,7 +596,7 @@ class _TeamCreateDialogState extends State<TeamCreateDialog> {
                   ElevatedButton(
                     onPressed: _createTeam,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
+                      backgroundColor: AppColors.navyBlue,
                       foregroundColor: Colors.white,
                     ),
                     child:
