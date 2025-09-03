@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:navysync/pages/auth/auth_gate.dart';
 import 'package:navysync/pages/auth/authentication_page.dart';
 import 'package:navysync/pages/auth/verify_email_page.dart';
+import 'package:navysync/pages/create_announcement_page.dart';
+import 'package:navysync/pages/departments.dart';
 import 'package:navysync/pages/home_page.dart';
 import 'package:navysync/pages/profile.dart';
 import 'package:navysync/pages/tasks.dart';
@@ -67,8 +69,8 @@ final router = GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/tasks',
-              builder: (context, state) => const TasksView(),
+              path: '/departments',
+              builder: (context, state) => DepartmentsPage(),
             ),
           ],
         ),
@@ -94,6 +96,11 @@ final router = GoRouter(
     GoRoute(
       path: '/create-event',
       builder: (context, state) => const CreateEventPage(),
+    ),
+
+    GoRoute(
+      path: '/create-announcement',
+      builder: (context, state) => CreateAnnouncementPage(),
     ),
   ],
 );
@@ -137,9 +144,9 @@ class ScaffoldWithNestedNavigation extends StatelessWidget {
             label: 'Teams',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.task_outlined),
-            activeIcon: Icon(Icons.task),
-            label: 'Tasks',
+            icon: Icon(Icons.business_outlined),
+            activeIcon: Icon(Icons.business),
+            label: 'Departments',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),

@@ -3,18 +3,14 @@ import 'package:flutter/material.dart';
 import '../constants.dart';
 
 enum AnnouncementVisibility {
+  public,
   organization, // Everyone in the organization can see
-  department,   // Only department members can see
-  team,        // Only team members can see
-  private,     // Only invited users can see
+  department, // Only department members can see
+  team, // Only team members can see
+  private, // Only invited users can see
 }
 
-enum AnnouncementPriority {
-  low,
-  normal,
-  high,
-  urgent,
-}
+enum AnnouncementPriority { low, normal, high, urgent }
 
 class Announcement {
   final String id;
@@ -25,7 +21,8 @@ class Announcement {
   final AnnouncementPriority priority;
   final String? departmentId; // Required if visibility is department
   final String? teamId; // Required if visibility is team
-  final List<String> targetUsers; // List of user IDs (for private announcements)
+  final List<String>
+  targetUsers; // List of user IDs (for private announcements)
   final List<String> tags; // Optional tags for categorization
   final String? imageUrl; // Optional announcement image
   final String? link; // Optional external link
@@ -59,10 +56,7 @@ class Announcement {
 
   factory Announcement.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    return Announcement.fromJson({
-      'id': doc.id,
-      ...data,
-    });
+    return Announcement.fromJson({'id': doc.id, ...data});
   }
 
   factory Announcement.fromJson(Map<String, dynamic> json) {
@@ -79,19 +73,22 @@ class Announcement {
       tags: List<String>.from(json['tags'] ?? []),
       imageUrl: json['imageUrl'],
       link: json['link'],
-      expiresAt: json['expiresAt'] is Timestamp
-          ? (json['expiresAt'] as Timestamp).toDate()
-          : json['expiresAt'] is String
+      expiresAt:
+          json['expiresAt'] is Timestamp
+              ? (json['expiresAt'] as Timestamp).toDate()
+              : json['expiresAt'] is String
               ? DateTime.tryParse(json['expiresAt'])
               : null,
       readBy: List<String>.from(json['readBy'] ?? []),
       isPinned: json['isPinned'] ?? false,
-      createdAt: json['createdAt'] is Timestamp
-          ? (json['createdAt'] as Timestamp).toDate()
-          : DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-      updatedAt: json['updatedAt'] is Timestamp
-          ? (json['updatedAt'] as Timestamp).toDate()
-          : DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
+      createdAt:
+          json['createdAt'] is Timestamp
+              ? (json['createdAt'] as Timestamp).toDate()
+              : DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      updatedAt:
+          json['updatedAt'] is Timestamp
+              ? (json['updatedAt'] as Timestamp).toDate()
+              : DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
       isActive: json['isActive'] ?? true,
     );
   }
@@ -99,6 +96,8 @@ class Announcement {
   static AnnouncementVisibility _parseVisibility(dynamic visibility) {
     if (visibility is String) {
       switch (visibility) {
+        case 'public':
+          return AnnouncementVisibility.public;
         case 'organization':
           return AnnouncementVisibility.organization;
         case 'department':
@@ -175,6 +174,9 @@ class Announcement {
 
     // Check based on announcement visibility
     switch (visibility) {
+      case AnnouncementVisibility.public:
+        // Everyone can access
+        return true;
       case AnnouncementVisibility.organization:
         // Everyone in the organization can access
         return true;
@@ -207,6 +209,8 @@ class Announcement {
   // Helper method to get visibility icon
   IconData get visibilityIcon {
     switch (visibility) {
+      case AnnouncementVisibility.public:
+        return Icons.public;
       case AnnouncementVisibility.organization:
         return Icons.public;
       case AnnouncementVisibility.department:

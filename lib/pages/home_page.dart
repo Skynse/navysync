@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:navysync/components/e_fab.dart';
 import 'package:navysync/models/event.dart';
 import 'package:navysync/models/team.dart';
 import 'package:navysync/providers/event_provider.dart';
@@ -853,7 +854,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 _userTeamsCount == 1
                                     ? "team membership"
                                     : "team memberships",
-                            onTap: () => context.push('/teams'),
+                            onTap: () => context.go('/teams'),
                           ),
                         ),
                         SizedBox(
@@ -869,6 +870,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         SizedBox(
                           width: MediaQuery.of(context).size.width / 2 - 22,
                           child: _buildStatCard(
+                            onTap: () {
+                              context.go('/departments');
+                            },
                             title: "Department",
                             value: "$_departmentMembersCount",
                             icon: Icons.people,
@@ -1028,75 +1032,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 );
               },
             ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Quick Actions",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    Row(
-                      children: [
-                        if (_canCreateEvent()) ...[
-                          Expanded(
-                            child: _buildQuickActionButton(
-                              title: "Create Event",
-                              icon: Icons.add_circle_outline,
-                              color: Color(0xFF000080),
-                              onPressed: () => context.push('/create-event'),
-                            ),
-                          ),
-                          SizedBox(width: 16),
-                        ],
-                        Expanded(
-                          child: _buildQuickActionButton(
-                            title: "My Teams",
-                            icon: Icons.groups,
-                            color: Color(0xFF2196F3),
-                            onPressed: () => context.push('/teams'),
-                          ),
-                        ),
-                        SizedBox(width: 16),
-                        Expanded(
-                          child: _buildQuickActionButton(
-                            title: "Calendar",
-                            icon: Icons.calendar_month,
-                            color: Color(0xFFE89C31),
-                            onPressed: () => context.push('/calendar'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 80), // Space for FAB
-                  ],
-                ),
-              ),
-            ),
           ],
         ),
       ),
-      floatingActionButton:
+
+      floatingActionButton: ExpandableFab(
+        distance: 70,
+        children: [
           _canCreateEvent()
-              ? FloatingActionButton.extended(
-                heroTag: 'create_event_action_home',
-                onPressed: () => context.push('/create-event'),
-                backgroundColor: Color(0xFF000080),
-                icon: Icon(Icons.add, color: Colors.white),
-                label: Text(
-                  "Create Event",
-                  style: TextStyle(color: Colors.white),
-                ),
-                elevation: 4,
+              ? ActionButton(
+                icon: Icon(Icons.event),
+                onPressed: () {
+                  context.push('/create-event');
+                },
               )
-              : null,
+              : Container(),
+          ActionButton(
+            icon: Icon(Icons.announcement),
+            onPressed: () {
+              context.push('/create-announcement');
+            },
+          ),
+        ],
+      ),
     );
   }
 }
