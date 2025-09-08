@@ -147,8 +147,8 @@ class Event {
     String userDepartmentId,
     List<String> userTeamIds,
   ) {
-    // Always allow the creator and admins
-    if (userId == createdBy || userRoles.contains(UserRoles.admin)) {
+    // Always allow the creator and moderators
+    if (userId == createdBy || userRoles.contains(UserRoles.moderator)) {
       return true;
     }
 
@@ -171,16 +171,8 @@ class Event {
 
   // Helper method to get display color based on event visibility
   Color get displayColor {
-    switch (visibility) {
-      case EventVisibility.organization:
-        return AppColors.gold;
-      case EventVisibility.department:
-        return AppColors.primaryBlue;
-      case EventVisibility.team:
-        return AppColors.lightBlue;
-      case EventVisibility.private:
-        return AppColors.darkGray;
-    }
+    // Use standard blue for all events for consistency
+    return AppColors.primaryBlue;
   }
 
   // Helper method to get visibility icon

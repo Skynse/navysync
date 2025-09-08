@@ -1,13 +1,67 @@
+import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:navysync/constants.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:navysync/models/user.dart';
 import 'package:navysync/models/department.dart';
 import 'package:navysync/models/team.dart';
-import 'package:navysync/models/permission.dart';
 import 'package:navysync/services/auth_service.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+
+// Phone number formatter class
+class PhoneNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Get only digits from the new text
+    final digits = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+    
+    // Don't process if no digits
+    if (digits.isEmpty) {
+      return const TextEditingValue(
+        text: '',
+        selection: TextSelection.collapsed(offset: 0),
+      );
+    }
+    
+    // Limit to 10 digits
+    final limitedDigits = digits.length > 10 ? digits.substring(0, 10) : digits;
+    
+    String formattedText = '';
+    int cursorPosition = 0;
+    
+    // Format based on number of digits
+    if (limitedDigits.length >= 1) {
+      formattedText = '(${limitedDigits.substring(0, math.min(limitedDigits.length, 3))}';
+      if (limitedDigits.length > 3) {
+        formattedText += ')-${limitedDigits.substring(3, math.min(limitedDigits.length, 6))}';
+        if (limitedDigits.length > 6) {
+          formattedText += '-${limitedDigits.substring(6)}';
+        }
+      }
+    }
+    
+    // Calculate cursor position - always place at the end for better UX
+    cursorPosition = formattedText.length;
+    
+    // If user is deleting and cursor would be in the middle of a separator, 
+    // move it to a more natural position
+    if (newValue.text.length < oldValue.text.length) {
+      cursorPosition = formattedText.length;
+    }
+    
+    return TextEditingValue(
+      text: formattedText,
+      selection: TextSelection.collapsed(offset: cursorPosition),
+    );
+  }
+}
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -18,6 +72,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final AuthService _authService = AuthService();
+  final ImagePicker _picker = ImagePicker();
   NavySyncUser? _currentUser;
   Department? _userDepartment;
   List<Team> _userTeams = [];
@@ -27,6 +82,26 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _loadUserData();
+  }
+
+  // Function to convert role to title case
+  String _formatRoleForDisplay(String role) {
+    switch (role.toUpperCase()) {
+      case 'MODERATOR':
+        return 'Moderator';
+      case 'DEPARTMENT_HEAD':
+        return 'Department Head';
+      case 'TEAM_LEADER':
+        return 'Team Leader';
+      case 'MEMBER':
+        return 'Member';
+      default:
+        // Fallback: convert underscores to spaces and title case
+        return role.toLowerCase()
+            .split('_')
+            .map((word) => word[0].toUpperCase() + word.substring(1))
+            .join(' ');
+    }
   }
 
   Future<void> _loadUserData() async {
@@ -78,13 +153,371 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _changeProfilePicture() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 80,
+      );
+
+      if (image == null) return;
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // Show loading indicator
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+      }
+
+      // Upload to Firebase Storage
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('profile_pictures')
+          .child('${user.uid}.jpg');
+
+      final uploadTask = storageRef.putData(await image.readAsBytes());
+      final snapshot = await uploadTask;
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+
+      // Update user document with new profile picture URL
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({
+        'profilePictureUrl': downloadUrl,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Reload user data
+      await _loadUserData();
+
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile picture updated successfully!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update profile picture: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showEditProfileDialog() async {
+    // Get current user data from Firestore to get firstName, lastName, bio, and phone
+    String currentFirstName = '';
+    String currentLastName = '';
+    String currentBio = '';
+    String currentPhone = _currentUser?.phoneNumber ?? '';
+    
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        if (userDoc.exists) {
+          final userData = userDoc.data()!;
+          currentFirstName = userData['firstName'] ?? '';
+          currentLastName = userData['lastName'] ?? '';
+          currentBio = userData['bio'] ?? '';
+          currentPhone = userData['phoneNumber'] ?? _currentUser?.phoneNumber ?? '';
+          
+          // If firstName/lastName don't exist but name does, split it
+          if (currentFirstName.isEmpty && currentLastName.isEmpty && userData['name'] != null) {
+            final nameParts = userData['name'].toString().split(' ');
+            if (nameParts.isNotEmpty) {
+              currentFirstName = nameParts[0];
+              if (nameParts.length > 1) {
+                currentLastName = nameParts.sublist(1).join(' ');
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // Handle error silently
+    }
+    
+    final firstNameController = TextEditingController(text: currentFirstName);
+    final lastNameController = TextEditingController(text: currentLastName);
+    final phoneController = TextEditingController(text: currentPhone);
+    final bioController = TextEditingController(text: currentBio);
+    
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Profile'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(
+                  radius: 40,
+                  backgroundImage: _currentUser?.profilePictureUrl != null &&
+                          _currentUser!.profilePictureUrl.isNotEmpty
+                      ? NetworkImage(_currentUser!.profilePictureUrl)
+                      : null,
+                  backgroundColor: AppColors.navyBlue.withOpacity(0.8),
+                  child: _currentUser?.profilePictureUrl == null ||
+                          _currentUser!.profilePictureUrl.isEmpty
+                      ? Text(
+                          _currentUser?.name != null &&
+                                  _currentUser!.name.isNotEmpty
+                              ? _currentUser!.name[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            color: Colors.white,
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context); // Close the dialog first
+                    _changeProfilePicture();
+                  },
+                  icon: const Icon(Icons.photo_camera),
+                  label: const Text('Change Profile Picture'),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: firstNameController,
+                        decoration: const InputDecoration(
+                          labelText: 'First Name',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.person),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: lastNameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Last Name',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: phoneController,
+                  decoration: const InputDecoration(
+                    labelText: 'Phone Number',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.phone),
+                    hintText: '(555)-123-4567',
+                  ),
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [
+                    PhoneNumberFormatter(),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: bioController,
+                  decoration: const InputDecoration(
+                    labelText: 'Bio',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.info),
+                    hintText: 'Tell us about yourself...',
+                  ),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.navyBlue,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      await _updateProfile(
+        firstName: firstNameController.text.trim(),
+        lastName: lastNameController.text.trim(),
+        bio: bioController.text.trim(),
+        phoneNumber: phoneController.text.trim(),
+      );
+    }
+  }
+
+  Future<void> _updateProfile({
+    required String firstName,
+    required String lastName,
+    required String bio,
+    required String phoneNumber,
+  }) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // Combine first and last name for the name field
+      final fullName = '$firstName $lastName'.trim();
+
+      // Update Firestore document
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({
+        'firstName': firstName,
+        'lastName': lastName,
+        'name': fullName, // Keep the name field for backward compatibility
+        'bio': bio,
+        'phoneNumber': phoneNumber,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Update Firebase Auth display name
+      await user.updateDisplayName(fullName);
+
+      // Reload user data to reflect changes
+      await _loadUserData();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile updated successfully!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update profile: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<String> _getUserBio() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return '';
+
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      
+      if (userDoc.exists) {
+        return userDoc.data()?['bio'] ?? '';
+      }
+      return '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  Future<String> _getUserPhoneNumber() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return '';
+
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      
+      if (userDoc.exists) {
+        return userDoc.data()?['phoneNumber'] ?? '';
+      }
+      return '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  Future<String> _getUserDisplayName() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return '';
+
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      
+      if (userDoc.exists) {
+        final userData = userDoc.data()!;
+        final firstName = userData['firstName'] as String?;
+        final lastName = userData['lastName'] as String?;
+        
+        // Prefer firstName + lastName if both exist
+        if (firstName != null && firstName.isNotEmpty && 
+            lastName != null && lastName.isNotEmpty) {
+          return '$firstName $lastName';
+        }
+        
+        // Fall back to just firstName if lastName is empty
+        if (firstName != null && firstName.isNotEmpty) {
+          return firstName;
+        }
+        
+        // Fall back to the name field
+        return userData['name'] ?? '';
+      }
+      return '';
+    } catch (e) {
+      return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(
           title: const Text(
-            'My Profile',
+            'Profile',
             style: TextStyle(
               color: AppColors.white,
               fontWeight: FontWeight.bold,
@@ -129,16 +562,16 @@ class _ProfilePageState extends State<ProfilePage> {
                       leading: Icon(Icons.edit),
                       title: Text('Edit Profile'),
                       onTap: () {
-                        // Handle edit profile
                         Navigator.pop(context);
+                        _showEditProfileDialog();
                       },
                     ),
                     ListTile(
                       leading: Icon(Icons.photo_camera),
                       title: Text('Change Profile Picture'),
                       onTap: () {
-                        // Handle change profile picture
                         Navigator.pop(context);
+                        _changeProfilePicture();
                       },
                     ),
                   ],
@@ -170,7 +603,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'My Profile',
+          'Profile',
           style: TextStyle(
             color: AppColors.white,
             fontWeight: FontWeight.bold,
@@ -181,11 +614,12 @@ class _ProfilePageState extends State<ProfilePage> {
         iconTheme: const IconThemeData(color: AppColors.white),
         centerTitle: false,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit, color: AppColors.white),
-            onPressed: () {
-              // Navigate to edit profile page
-            },
+          Padding(
+            padding: const EdgeInsets.only(right: 20.0),
+            child: IconButton(
+              icon: const Icon(Icons.edit, color: AppColors.white),
+              onPressed: () => _showEditProfileDialog(),
+            ),
           ),
         ],
       ),
@@ -228,14 +662,22 @@ class _ProfilePageState extends State<ProfilePage> {
                               : null,
                     ),
                     SizedBox(height: 16),
-                    Text(
-                      _currentUser?.name??
-                          FirebaseAuth.instance.currentUser!.email ??
-                          'User',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    // Display user name with firstName/lastName preference
+                    FutureBuilder<String>(
+                      future: _getUserDisplayName(),
+                      builder: (context, snapshot) {
+                        String displayName = snapshot.data ?? 
+                            _currentUser?.name ?? 
+                            FirebaseAuth.instance.currentUser?.email ?? 
+                            'User';
+                        return Text(
+                          displayName,
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        );
+                      },
                     ),
                     SizedBox(height: 8),
                     // Display user roles as chips
@@ -247,13 +689,90 @@ class _ProfilePageState extends State<ProfilePage> {
                           _currentUser?.roles
                               .map(
                                 (role) => Chip(
-                                  label: Text(role),
+                                  label: Text(_formatRoleForDisplay(role)),
                                   backgroundColor: _getRoleColor(role),
                                   labelStyle: TextStyle(color: Colors.white),
                                 ),
                               )
                               .toList() ??
                           [],
+                    ),
+                    SizedBox(height: 16),
+                    // Display bio if available
+                    FutureBuilder<String>(
+                      future: _getUserBio(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                          return Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.lightGray.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Bio',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.navyBlue,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  snapshot.data!,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        return SizedBox.shrink();
+                      },
+                    ),
+                    // Display phone number if available
+                    FutureBuilder<String>(
+                      future: _getUserPhoneNumber(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                          return Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.lightGray.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Phone Number',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.navyBlue,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  snapshot.data!,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        return SizedBox.shrink();
+                      },
                     ),
                     SizedBox(height: 16),
                     // Display department and team affiliations
@@ -296,20 +815,45 @@ class _ProfilePageState extends State<ProfilePage> {
               padding: const EdgeInsets.symmetric(vertical: 16.0),
               child: ElevatedButton(
                 onPressed: () async {
-                  try {
-                    await _authService.signOut();
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Logged out successfully!'),
+                  // Show confirmation dialog
+                  final shouldLogout = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Confirm Logout'),
+                      content: const Text('Are you sure you want to log out?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel'),
                         ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.navyBlue,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Logout'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (shouldLogout == true) {
+                    try {
+                      await _authService.signOut();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Logged out successfully!'),
+                          ),
+                        );
+                        context.go('/auth_gate');
+                      }
+                    } catch (error) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Logout failed: $error')),
                       );
-                      context.go('/auth_gate');
                     }
-                  } catch (error) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Logout failed: $error')),
-                    );
                   }
                 },
                 // navy blue
@@ -363,7 +907,7 @@ class SettingsTile extends StatelessWidget {
 // Helper function to get color based on role
 Color _getRoleColor(String role) {
   switch (role.toLowerCase()) {
-    case 'admin':
+    case 'moderator':
       return Colors.red.shade700;
     case 'department_head':
       return Colors.purple.shade700;

@@ -26,6 +26,12 @@ class _CreateAnnouncementPageState extends State<CreateAnnouncementPage> {
   List<String> _tags = [];
   final _tagController = TextEditingController();
 
+  // Department and Team selection
+  String? _selectedDepartmentId;
+  String? _selectedTeamId;
+  List<Map<String, dynamic>> _departments = [];
+  List<Map<String, dynamic>> _teams = [];
+
   Future<void> createAnnouncement() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -50,6 +56,8 @@ class _CreateAnnouncementPageState extends State<CreateAnnouncementPage> {
         link: _linkController.text.trim().isEmpty ? null : _linkController.text.trim(),
         expiresAt: _expiresAt,
         isPinned: _isPinned,
+        departmentId: _visibility == AnnouncementVisibility.department ? _selectedDepartmentId : null,
+        teamId: _visibility == AnnouncementVisibility.team ? _selectedTeamId : null,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -90,6 +98,48 @@ class _CreateAnnouncementPageState extends State<CreateAnnouncementPage> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDepartmentsAndTeams();
+  }
+
+  Future<void> _loadDepartmentsAndTeams() async {
+    try {
+      // Load departments
+      final departmentsSnapshot = await FirebaseFirestore.instance
+          .collection('departments')
+          .orderBy('name')
+          .get();
+      
+      _departments = departmentsSnapshot.docs.map((doc) {
+        return {
+          'id': doc.id,
+          'name': doc.data()['name'] as String? ?? 'Unknown Department',
+        };
+      }).toList();
+
+      // Load teams
+      final teamsSnapshot = await FirebaseFirestore.instance
+          .collection('teams')
+          .orderBy('name')
+          .get();
+      
+      _teams = teamsSnapshot.docs.map((doc) {
+        return {
+          'id': doc.id,
+          'name': doc.data()['name'] as String? ?? 'Unknown Team',
+        };
+      }).toList();
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      print('Error loading departments and teams: $e');
     }
   }
 
@@ -529,16 +579,18 @@ class _CreateAnnouncementPageState extends State<CreateAnnouncementPage> {
                         switch (value) {
                           case 'organization':
                             _visibility = AnnouncementVisibility.organization;
+                            _selectedDepartmentId = null;
+                            _selectedTeamId = null;
                             break;
                           case 'department':
                             _visibility = AnnouncementVisibility.department;
+                            _selectedTeamId = null;
                             break;
                           case 'team':
                             _visibility = AnnouncementVisibility.team;
+                            _selectedDepartmentId = null;
                             break;
-                          case 'private':
-                            _visibility = AnnouncementVisibility.private;
-                            break;
+
                         }
                       });
                     },
@@ -558,16 +610,83 @@ class _CreateAnnouncementPageState extends State<CreateAnnouncementPage> {
                         label: 'Team',
                         leadingIcon: Icon(Icons.group, color: AppColors.navyBlue),
                       ),
-                      DropdownMenuEntry(
-                        value: 'private',
-                        label: 'Private',
-                        leadingIcon: Icon(Icons.lock, color: AppColors.navyBlue),
-                      ),
                     ],
                     initialSelection: 'organization',
                     hintText: 'Select Visibility',
                   ),
                 ),
+
+                // Department selector (shown when department visibility is selected)
+                if (_visibility == AnnouncementVisibility.department)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.lightGray.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(AppDimensions.radiusM),
+                      border: Border.all(color: AppColors.lightBlue.withOpacity(0.3)),
+                    ),
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedDepartmentId,
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedDepartmentId = value;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        labelText: 'Select Department',
+                        prefixIcon: Icon(Icons.business, color: AppColors.navyBlue),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.all(AppDimensions.paddingM),
+                      ),
+                      validator: (value) {
+                        if (_visibility == AnnouncementVisibility.department && value == null) {
+                          return 'Please select a department';
+                        }
+                        return null;
+                      },
+                      items: _departments.map((dept) {
+                        return DropdownMenuItem<String>(
+                          value: dept['id'],
+                          child: Text(dept['name']),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+
+                // Team selector (shown when team visibility is selected)
+                if (_visibility == AnnouncementVisibility.team)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.lightGray.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(AppDimensions.radiusM),
+                      border: Border.all(color: AppColors.lightBlue.withOpacity(0.3)),
+                    ),
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedTeamId,
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedTeamId = value;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        labelText: 'Select Team',
+                        prefixIcon: Icon(Icons.group, color: AppColors.navyBlue),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.all(AppDimensions.paddingM),
+                      ),
+                      validator: (value) {
+                        if (_visibility == AnnouncementVisibility.team && value == null) {
+                          return 'Please select a team';
+                        }
+                        return null;
+                      },
+                      items: _teams.map((team) {
+                        return DropdownMenuItem<String>(
+                          value: team['id'],
+                          child: Text(team['name']),
+                        );
+                      }).toList(),
+                    ),
+                  ),
 
                 Container(
                   decoration: BoxDecoration(

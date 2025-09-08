@@ -164,7 +164,7 @@ class AuthService {
   }
 
   // Check user roles
-  bool isAdmin() => _currentUser?.isAdmin() ?? false;
+  bool isModerator() => _currentUser?.isModerator() ?? false;
   bool isDepartmentHead([String? deptId]) =>
       _currentUser?.isDepartmentHead(deptId) ?? false;
   bool isTeamLeader([String? teamId]) =>

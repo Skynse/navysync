@@ -9,7 +9,7 @@ class NavySyncUser {
   final String departmentId; // Primary department assignment
   final List<String> teamIds; // Teams the user belongs to
   final List<String>
-  roles; // Multiple roles possible: 'admin', 'department_head', 'team_leader', 'member'
+  roles; // Multiple roles possible: 'MODERATOR', 'DEPARTMENT_HEAD', 'TEAM_LEADER', 'MEMBER'
   final Map<String, dynamic>
   permissions; // Specific permissions by resource type
   final DateTime createdAt;
@@ -84,7 +84,7 @@ class NavySyncUser {
   }
 
   // Helper methods for permission checks
-  bool isAdmin() => roles.contains(UserRoles.admin);
+  bool isModerator() => roles.contains(UserRoles.moderator);
 
   bool isDepartmentHead([String? deptId]) {
     if (!roles.contains(UserRoles.departmentHead)) return false;
@@ -102,7 +102,7 @@ class NavySyncUser {
 
   // Check if user has access to a particular event
   bool canAccessEvent(Map<String, dynamic> eventData) {
-    if (isAdmin()) return true;
+    if (isModerator()) return true;
 
     final eventDeptId = eventData['departmentId'] as String?;
     final eventTeamId = eventData['teamId'] as String?;
@@ -134,8 +134,8 @@ class NavySyncUser {
 
   // Check if user has permission for a specific action
   bool hasPermission(String action, String resourceType) {
-    // Admins have all permissions
-    if (isAdmin()) return true;
+    // Moderators have all permissions
+    if (isModerator()) return true;
 
     // Check role-specific permissions
     if (permissions.containsKey(resourceType)) {

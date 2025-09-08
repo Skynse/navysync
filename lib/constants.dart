@@ -47,8 +47,8 @@ class EventTypes {
 
 // User Roles
 class UserRoles {
-  static const String admin = 'admin';
-  static const String departmentHead = 'department_head';
-  static const String teamLeader = 'team_leader';
-  static const String member = 'member';
+  static const String moderator = 'MODERATOR';
+  static const String departmentHead = 'DEPARTMENT_HEAD';
+  static const String teamLeader = 'TEAM_LEADER';
+  static const String member = 'MEMBER';
 }

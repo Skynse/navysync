@@ -4,10 +4,15 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'router.dart';
 import 'constants.dart';
+import 'services/event_cleanup_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  
+  // Initialize the event cleanup service
+  await EventCleanupService().initialize();
+  
   runApp(const ProviderScope(child: NavySyncApp()));
 }
 

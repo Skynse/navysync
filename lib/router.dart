@@ -7,12 +7,13 @@ import 'package:navysync/pages/create_announcement_page.dart';
 import 'package:navysync/pages/departments.dart';
 import 'package:navysync/pages/home_page.dart';
 import 'package:navysync/pages/profile.dart';
-import 'package:navysync/pages/tasks.dart';
 import 'package:navysync/pages/team_details_view.dart';
 import 'package:navysync/pages/teams.dart';
 import 'package:navysync/pages/team_manage_view.dart';
 import 'package:navysync/pages/calendar_page.dart';
 import 'package:navysync/pages/create_event_page.dart';
+import 'package:navysync/pages/team_events_view.dart';
+import 'package:navysync/models/event.dart';
 import 'package:navysync/constants.dart';
 
 final router = GoRouter(
@@ -77,16 +78,16 @@ final router = GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/profile',
-              builder: (context, state) => const ProfilePage(),
+              path: '/calendar',
+              builder: (context, state) => const CalendarPage(),
             ),
           ],
         ),
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/calendar',
-              builder: (context, state) => const CalendarPage(),
+              path: '/profile',
+              builder: (context, state) => const ProfilePage(),
             ),
           ],
         ),
@@ -97,7 +98,13 @@ final router = GoRouter(
       path: '/create-event',
       builder: (context, state) => const CreateEventPage(),
     ),
-
+    GoRoute(
+      path: '/team-events',
+      builder: (context, state) {
+        final event = state.extra as Event;
+        return TeamEventsView(eventObject: event);
+      },
+    ),
     GoRoute(
       path: '/create-announcement',
       builder: (context, state) => CreateAnnouncementPage(),
@@ -149,14 +156,14 @@ class ScaffoldWithNestedNavigation extends StatelessWidget {
             label: 'Departments',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.calendar_today_outlined),
             activeIcon: Icon(Icons.calendar_today),
             label: 'Calendar',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Profile',
           ),
         ],
       ),

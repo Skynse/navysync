@@ -48,16 +48,8 @@ extension EventVisibilityExtension on EventVisibility {
   }
 
   Color get color {
-    switch (this) {
-      case EventVisibility.organization:
-        return AppColors.gold;
-      case EventVisibility.department:
-        return AppColors.primaryBlue;
-      case EventVisibility.team:
-        return AppColors.lightBlue;
-      case EventVisibility.private:
-        return AppColors.darkGray;
-    }
+    // Use standard blue for all events for consistency
+    return AppColors.primaryBlue;
   }
 }
 

@@ -64,8 +64,8 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
       // Check permissions
       _canManageTeam =
           _team!.teamLeaderId == _currentUser?.id ||
-          _currentUser?["roles"].contains('admin') ||
-          _currentUser?["roles"].contains('department_head');
+          _currentUser?["roles"].contains('MODERATOR') ||
+          _currentUser?["roles"].contains('DEPARTMENT_HEAD');
 
       // Fetch team members
       if (_team!.members.isNotEmpty) {
@@ -93,21 +93,11 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
               .toList();
 
       // Fetch team events
-      final now = DateTime.now();
-      // final eventsSnapshot =
-      //     await FirebaseFirestore.instance
-      //         .collection('teams')
-      //         .doc(widget.teamId)
-      //         .collection('events')
-      //         .where('date', isGreaterThanOrEqualTo: now)
-      //         .orderBy('date')
-      //         .limit(5)
-      //         .get();
       final eventsSnapshot =
           await FirebaseFirestore.instance
               .collection("events")
               .where('teamId', isEqualTo: widget.teamId)
-              .where('date', isGreaterThanOrEqualTo: now)
+              .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(DateTime.now()))
               .orderBy('date')
               .limit(5)
               .get();
@@ -566,6 +556,150 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
       return '${dateTime.month}/${dateTime.day}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
     } else {
       return '${dateTime.month}/${dateTime.day}/${dateTime.year}';
+    }
+  }
+
+  Widget _buildEventDetailsDialog(Map<String, dynamic> event) {
+    final eventDate = event['date'] as Timestamp?;
+    final displayDate = eventDate?.toDate() ?? DateTime.now();
+    
+    return AlertDialog(
+      title: Text(
+        event['title'] ?? 'Event Details',
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          color: Colors.blue,
+        ),
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (event['description'] != null && 
+                event['description'].toString().isNotEmpty) ...[
+              const Text(
+                'Description:',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text(event['description']),
+              const SizedBox(height: 16),
+            ],
+            const Text(
+              'Date & Time:',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.access_time, size: 16, color: Colors.grey),
+                const SizedBox(width: 8),
+                Text(_formatDate(displayDate, showTime: true)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (event['location'] != null && 
+                event['location'].toString().isNotEmpty) ...[
+              const Text(
+                'Location:',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(event['location'])),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+            // Attendance Section
+            const Text(
+              'Will you attend this event?',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      _updateEventAttendance(event['id'], 'attending');
+                      Navigator.of(context).pop();
+                    },
+                    icon: const Icon(Icons.check_circle),
+                    label: const Text('Attending'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      _updateEventAttendance(event['id'], 'not_attending');
+                      Navigator.of(context).pop();
+                    },
+                    icon: const Icon(Icons.cancel),
+                    label: const Text('Not Attending'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _updateEventAttendance(String eventId, String status) async {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return;
+
+      final attendanceCollection = FirebaseFirestore.instance
+          .collection('events')
+          .doc(eventId)
+          .collection('attendance');
+
+      await attendanceCollection.doc(currentUser.uid).set({
+        'userId': currentUser.uid,
+        'status': status,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            status == 'attending' 
+                ? 'Marked as attending!' 
+                : 'Marked as not attending.',
+          ),
+          backgroundColor: status == 'attending' ? Colors.green : Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating attendance: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 }

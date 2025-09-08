@@ -23,7 +23,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
         iconTheme: const IconThemeData(color: AppColors.white),
         centerTitle: false,
       ),
-      body: Center(child: Text('Departments Page')),
+      body: Center(child: Text('[Work in Progress!] Departments Page')),
     );
   }
 }

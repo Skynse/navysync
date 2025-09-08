@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:navysync/models/team.dart';
-import 'package:navysync/models/user.dart';
 
 class TeamManageView extends StatefulWidget {
   final String teamId;
@@ -13,7 +12,6 @@ class TeamManageView extends StatefulWidget {
 
 class _TeamManageViewState extends State<TeamManageView> {
   Team? _team;
-  List<QueryDocumentSnapshot<Map<String, dynamic>>> _members = [];
   bool _isLoading = true;
   String? _error;
 
@@ -36,63 +34,11 @@ class _TeamManageViewState extends State<TeamManageView> {
               .get();
       if (!teamDoc.exists) throw 'Team not found';
       _team = Team.fromFirestore(teamDoc);
-      final membersSnapshot =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .where('teamIds', arrayContains: widget.teamId)
-              .get();
-      _members = membersSnapshot.docs.toList();
     } catch (e) {
       _error = e.toString();
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  Future<void> _addMember() async {
-    final usersSnapshot =
-        await FirebaseFirestore.instance.collection('users').get();
-    final allUsers = usersSnapshot.docs.toList();
-    if (allUsers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No users available to add.')),
-      );
-      return;
-    }
-    QueryDocumentSnapshot<Map<String, dynamic>>? selectedUserDoc =
-        await showDialog<QueryDocumentSnapshot<Map<String, dynamic>>>(
-          context: context,
-          builder:
-              (context) => SimpleDialog(
-                title: const Text('Select user to add'),
-                children:
-                    allUsers
-                        .map(
-                          (user) => SimpleDialogOption(
-                            onPressed: () => Navigator.pop(context, user),
-                            child: Text(user["name"] ?? 'Unknown User'),
-                          ),
-                        )
-                        .toList(),
-              ),
-        );
-    if (selectedUserDoc != null) {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(selectedUserDoc['id'])
-          .update({
-            'teamIds': FieldValue.arrayUnion([widget.teamId]),
-          });
-      await _loadTeam();
-    }
-  }
-
-  Future<void> _removeMember(String id) async {
-    if (id == _team?.teamLeaderId) return;
-    await FirebaseFirestore.instance.collection('users').doc(id).update({
-      'teamIds': FieldValue.arrayRemove([widget.teamId]),
-    });
-    await _loadTeam();
   }
 
   Future<void> _editTeam() async {
@@ -102,42 +48,53 @@ class _TeamManageViewState extends State<TeamManageView> {
     );
     final result = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Edit Team'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Team Name'),
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Team'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Team Name',
+                  border: OutlineInputBorder(),
                 ),
-                TextField(
-                  controller: descController,
-                  decoration: const InputDecoration(labelText: 'Description'),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
               ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Save'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: descController,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
               ),
             ],
           ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
     );
     if (result == true) {
       await FirebaseFirestore.instance
           .collection('teams')
           .doc(widget.teamId)
           .update({
-            'name': nameController.text,
-            'description': descController.text,
-          });
+        'name': nameController.text,
+        'description': descController.text,
+      });
       await _loadTeam();
     }
   }
@@ -175,7 +132,7 @@ class _TeamManageViewState extends State<TeamManageView> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Members',
+                      'Team Description',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -183,69 +140,27 @@ class _TeamManageViewState extends State<TeamManageView> {
                     ),
                     const SizedBox(height: 8),
                     Expanded(
-                      child: ListView.separated(
-                        itemCount: _members.length,
-                        separatorBuilder: (_, __) => const Divider(),
-                        itemBuilder: (context, index) {
-                          final user = _members[index];
-                          final isLeader = user.id == _team?.teamLeaderId;
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundImage:
-                                  user["profilePictureUrl"].isNotEmpty
-                                      ? NetworkImage(user["profilePictureUrl"])
-                                      : null,
-                              child:
-                                  user["profilePictureUrl"].isEmpty
-                                      ? Text(
-                                        user["name"] != null &&
-                                                user["name"].isNotEmpty
-                                            ? user["name"][0].toUpperCase()
-                                            : '?',
-                                      )
-                                      : null,
-                            ),
-                            title: Text(user["name"] ?? 'Unknown User'),
-                            subtitle: Text(
-                              user["roles"]?.join(', ') ?? 'No roles',
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (isLeader)
-                                  Chip(
-                                    label: const Text('Leader'),
-                                    backgroundColor: Colors.blue.shade800,
-                                    labelStyle: const TextStyle(
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                if (!isLeader)
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.remove_circle,
-                                      color: Colors.red,
-                                    ),
-                                    tooltip: 'Remove',
-                                    onPressed: () async {
-                                      await _removeMember(user.id);
-                                    },
-                                  ),
-                              ],
-                            ),
-                          );
-                        },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: const Text(
+                          'Team description functionality will be implemented here.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.person_add),
-                          label: const Text('Add Member'),
-                          onPressed: _addMember,
-                        ),
-                        const SizedBox(width: 16),
                         ElevatedButton.icon(
                           icon: const Icon(Icons.edit),
                           label: const Text('Edit Team'),
