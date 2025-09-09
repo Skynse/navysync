@@ -787,8 +787,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   bool _canCreateEvent() {
-    return AppUserProfile.roles.contains('MODERATOR') ||
-        AppUserProfile.roles.contains('event_creator');
+    // Allow all authenticated users to create personal events
+    return true;
   }
 
   @override
@@ -875,6 +875,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 IconButton(
                   icon: Icon(Icons.refresh, color: Colors.white),
                   onPressed: _loadDashboardData,
+                ),
+                IconButton(
+                  icon: Icon(Icons.school, color: Colors.white),
+                  onPressed: () => context.push('/learn'),
+                  tooltip: 'Learn!',
                 ),
                 IconButton(
                   icon: Icon(Icons.calendar_month, color: Colors.white),

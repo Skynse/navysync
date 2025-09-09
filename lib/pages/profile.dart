@@ -582,6 +582,14 @@ class _ProfilePageState extends State<ProfilePage> {
         },
       ),
       SettingsTile(
+        icon: Icons.school,
+        title: 'Learn and Study',
+        subtitle: 'Comprehensive guide and tutorials',
+        onTap: () {
+          context.push('/learn');
+        },
+      ),
+      SettingsTile(
         icon: Icons.notifications,
         title: 'Notifications',
         subtitle: 'Manage your notification preferences',

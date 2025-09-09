@@ -23,6 +23,21 @@ final userEventsProvider = FutureProvider<List<Event>>((ref) async {
   );
 });
 
+// All user events provider (including past events for calendar)
+final allUserEventsProvider = FutureProvider<List<Event>>((ref) async {
+  final currentUserAsync = ref.watch(currentUserProvider);
+  
+  return await currentUserAsync.when(
+    data: (currentUser) async {
+      if (currentUser == null) return [];
+      final repository = ref.watch(eventRepositoryProvider);
+      return repository.getVisibleEvents(currentUser);
+    },
+    loading: () => <Event>[],
+    error: (_, __) => <Event>[],
+  );
+});
+
 // Upcoming user events provider
 final upcomingUserEventsProvider = FutureProvider<List<Event>>((ref) async {
   final currentUserAsync = ref.watch(currentUserProvider);

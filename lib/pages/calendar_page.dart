@@ -4,11 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:go_router/go_router.dart';
 import '../models/event.dart';
 import '../providers/event_provider.dart';
 import '../constants.dart';
-import '../services/event_cleanup_service.dart';
 
 class CalendarPage extends ConsumerStatefulWidget {
   const CalendarPage({super.key});
@@ -40,7 +38,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
     // Auto-refresh every 30 seconds to catch Firebase changes
     _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-      ref.invalidate(userEventsProvider);
+      ref.invalidate(allUserEventsProvider);
     });
   }
 
@@ -50,15 +48,10 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
 
   @override
   Widget build(BuildContext context) {
-    final userEventsAsync = ref.watch(userEventsProvider);
-    
-    // Clean up expired events when the page loads
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      EventCleanupService().triggerManualCleanup();
-    });
+    final userEventsAsync = ref.watch(allUserEventsProvider);
     
     // Auto-refresh events every 30 seconds to catch Firebase changes
-    ref.listen(userEventsProvider, (previous, next) {
+    ref.listen(allUserEventsProvider, (previous, next) {
       // This will be called whenever the provider updates
     });
     
@@ -80,7 +73,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
         actions: [
           IconButton(
             onPressed: () {
-              ref.invalidate(userEventsProvider);
+              ref.invalidate(allUserEventsProvider);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Refreshing events...'),
@@ -97,7 +90,6 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
       body: userEventsAsync.when(
         data: (events) {
           final List<Appointment> appointments = events
-              .where((event) => event.isActive) // Only show active events
               .map((event) {
                 // Use proper start and end times
                 final startTime = event.startTime?.toDate() ?? event.date;
@@ -224,18 +216,33 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                     
                     // Special styling for agenda items in month view
                     if (isAgendaItem) {
+                      // Find the corresponding event for additional details
+                      final correspondingEvent = events.firstWhere(
+                        (e) => e.title == appointment.subject,
+                        orElse: () => events.first,
+                      );
+                      
+                      // Format time display
+                      String timeDisplay = '';
+                      if (correspondingEvent.startTime != null) {
+                        final startTime = correspondingEvent.startTime!.toDate();
+                        if (correspondingEvent.endTime != null) {
+                          final endTime = correspondingEvent.endTime!.toDate();
+                          timeDisplay = '${TimeOfDay.fromDateTime(startTime).format(context)} - ${TimeOfDay.fromDateTime(endTime).format(context)}';
+                        } else {
+                          timeDisplay = TimeOfDay.fromDateTime(startTime).format(context);
+                        }
+                      }
+                      
                       return Container(
                         margin: const EdgeInsets.symmetric(
                           horizontal: 4,
                           vertical: 2,
                         ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 6,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: appointment.color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: appointment.color.withOpacity(0.3),
                             width: 1,
@@ -243,32 +250,93 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                         ),
                         child: Row(
                           children: [
+                            // Color indicator
                             Container(
                               width: 4,
-                              height: 16,
+                              height: 20,
                               decoration: BoxDecoration(
                                 color: appointment.color,
                                 borderRadius: BorderRadius.circular(2),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 12),
+                            // Title
                             Expanded(
+                              flex: 3,
                               child: Text(
                                 appointment.subject,
                                 style: const TextStyle(
                                   color: AppColors.navyBlue,
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                                  fontWeight: FontWeight.w600,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            // Attendance indicator for agenda items
-                            if (attendanceStatus != null)
+                            // Time display
+                            if (timeDisplay.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              Expanded(
+                                flex: 2,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.access_time,
+                                      size: 12,
+                                      color: AppColors.darkGray,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Flexible(
+                                      child: Text(
+                                        timeDisplay,
+                                        style: const TextStyle(
+                                          color: AppColors.darkGray,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            // Location display
+                            if (correspondingEvent.location.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              Expanded(
+                                flex: 2,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.location_on,
+                                      size: 12,
+                                      color: AppColors.darkGray,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Flexible(
+                                      child: Text(
+                                        correspondingEvent.location,
+                                        style: const TextStyle(
+                                          color: AppColors.darkGray,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            // Attendance indicator
+                            if (attendanceStatus != null) ...[
+                              const SizedBox(width: 8),
                               Container(
                                 width: 10,
                                 height: 10,
-                                margin: const EdgeInsets.only(left: 8),
                                 decoration: BoxDecoration(
                                   color: attendanceStatus == 'attending' 
                                     ? AppColors.success 
@@ -280,6 +348,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                                   ),
                                 ),
                               ),
+                            ],
                           ],
                         ),
                       );
@@ -325,25 +394,6 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                     );
                   },
                 );
-              },
-              onTap: (details) {
-                print('Calendar tapped - appointments: ${details.appointments?.length}, targetElement: ${details.targetElement}');
-                
-                if (details.appointments != null && details.appointments!.isNotEmpty) {
-                  final appointment = details.appointments!.first;
-                  
-                  // Find the corresponding event
-                  final event = events.firstWhere(
-                    (e) => e.title == appointment.subject,
-                    orElse: () => events.first,
-                  );
-                  
-                  // Debug print to check if navigation is triggered
-                  print('Navigating to team events for: ${event.title}');
-                  
-                  // Navigate to team events view (removing the targetElement check for now)
-                  context.push('/team-events', extra: event);
-                }
               },
               onSelectionChanged: (CalendarSelectionDetails details) {
                 // This ensures the agenda updates when a date is selected
@@ -442,7 +492,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                 ),
                 const SizedBox(height: AppDimensions.paddingL),
                 ElevatedButton.icon(
-                  onPressed: () => ref.refresh(userEventsProvider),
+                  onPressed: () => ref.refresh(allUserEventsProvider),
                   icon: const Icon(Icons.refresh, color: AppColors.white),
                   label: const Text(
                     'Retry',
@@ -592,7 +642,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                           final picked = await showDatePicker(
                             context: context,
                             initialDate: selectedDate,
-                            firstDate: DateTime.now(),
+                            firstDate: DateTime(2020), // Allow selecting dates from 2020
                             lastDate: DateTime.now().add(const Duration(days: 365)),
                           );
                           if (picked != null) {

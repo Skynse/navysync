@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/event.dart';
+import '../models/user.dart';
 import '../providers/event_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/team_provider.dart';
+import '../providers/user_provider.dart';
 import '../constants.dart';
 
 extension EventVisibilityExtension on EventVisibility {
@@ -73,6 +75,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
   EventVisibility _visibility = EventVisibility.team;
   String? _selectedTeamId;
+  List<NavySyncUser> _selectedAttendees = [];
+  final TextEditingController _attendeeSearchController = TextEditingController();
   bool _isAllDay = false;
   bool _isLoading = false;
   String? _error;
@@ -82,6 +86,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     _titleController.dispose();
     _descriptionController.dispose();
     _locationController.dispose();
+    _attendeeSearchController.dispose();
     super.dispose();
   }
 
@@ -134,6 +139,11 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           return;
         }
 
+        if (_visibility == EventVisibility.private && _selectedAttendees.isEmpty) {
+          setState(() => _error = 'Please select at least one attendee for private events');
+          return;
+        }
+
         setState(() {
           _isLoading = true;
           _error = null;
@@ -158,6 +168,9 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                 _visibility == EventVisibility.department
                     ? user.departmentId
                     : null,
+            attendees: _visibility == EventVisibility.private 
+                ? _selectedAttendees.map((user) => user.id).toList()
+                : [],
             createdBy: user.id,
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
@@ -271,6 +284,9 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                               if (_visibility != EventVisibility.team) {
                                 _selectedTeamId = null;
                               }
+                              if (_visibility != EventVisibility.private) {
+                                _selectedAttendees.clear();
+                              }
                             });
                           },
                           title: Text(visibility.displayName),
@@ -351,6 +367,191 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
               if (_visibility == EventVisibility.team)
                 const SizedBox(height: 16),
+
+              // Attendee Selection (only for private visibility)
+              if (_visibility == EventVisibility.private) ...[
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Invite Attendees *',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        
+                        // Show total users for debugging
+                        Consumer(
+                          builder: (context, ref, child) {
+                            final allUsersAsync = ref.watch(allActiveUsersProvider);
+                            return allUsersAsync.when(
+                              data: (users) => Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Available users in system: ${users.length}',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  if (users.isEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    ElevatedButton.icon(
+                                      onPressed: () async {
+                                        try {
+                                          // Create test users
+                                          await ref.read(createTestUsersProvider.future);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Test users created successfully!')),
+                                          );
+                                        } catch (e) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text('Error creating test users: $e')),
+                                          );
+                                        }
+                                      },
+                                      icon: const Icon(Icons.add),
+                                      label: const Text('Create Test Users'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.orange,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              loading: () => const Text('Loading user count...'),
+                              error: (error, _) => Text('Error loading users: $error'),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        
+                        // Search field for attendees
+                        TextFormField(
+                          controller: _attendeeSearchController,
+                          decoration: const InputDecoration(
+                            labelText: 'Search users by name or email',
+                            hintText: 'Type at least 2 characters to search...',
+                            prefixIcon: Icon(Icons.search),
+                          ),
+                          onChanged: (value) {
+                            // Trigger search when user types
+                            setState(() {});
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        
+                        // Search results
+                        if (_attendeeSearchController.text.trim().isNotEmpty)
+                          Consumer(
+                            builder: (context, ref, child) {
+                              final searchQuery = _attendeeSearchController.text.trim();
+                              final searchResults = ref.watch(searchUsersProvider(searchQuery));
+                              
+                              return searchResults.when(
+                                data: (users) {
+                                  // Filter out already selected users and current user
+                                  final currentUserAsync = ref.read(currentUserProvider);
+                                  final currentUserId = currentUserAsync.value?.id;
+                                  
+                                  final filteredUsers = users.where((user) => 
+                                    user.id != currentUserId &&
+                                    !_selectedAttendees.any((selected) => selected.id == user.id)
+                                  ).toList();
+                                  
+                                  if (filteredUsers.isEmpty) {
+                                    return const Padding(
+                                      padding: EdgeInsets.all(8.0),
+                                      child: Text('No users found'),
+                                    );
+                                  }
+                                  
+                                  return Container(
+                                    constraints: const BoxConstraints(maxHeight: 200),
+                                    child: ListView.builder(
+                                      shrinkWrap: true,
+                                      itemCount: filteredUsers.length,
+                                      itemBuilder: (context, index) {
+                                        final user = filteredUsers[index];
+                                        return ListTile(
+                                          leading: CircleAvatar(
+                                            backgroundImage: user.profilePictureUrl.isNotEmpty
+                                                ? NetworkImage(user.profilePictureUrl)
+                                                : null,
+                                            child: user.profilePictureUrl.isEmpty
+                                                ? Text(user.name.isNotEmpty ? user.name[0].toUpperCase() : '?')
+                                                : null,
+                                          ),
+                                          title: Text(user.name),
+                                          subtitle: Text(user.email),
+                                          trailing: IconButton(
+                                            icon: const Icon(Icons.add_circle),
+                                            onPressed: () {
+                                              setState(() {
+                                                _selectedAttendees.add(user);
+                                                _attendeeSearchController.clear();
+                                              });
+                                            },
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  );
+                                },
+                                loading: () => const Padding(
+                                  padding: EdgeInsets.all(8.0),
+                                  child: LinearProgressIndicator(),
+                                ),
+                                error: (error, _) => Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Text('Error searching users: $error'),
+                                ),
+                              );
+                            },
+                          ),
+                        
+                        // Selected attendees
+                        if (_selectedAttendees.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Selected Attendees:',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _selectedAttendees.map((user) {
+                              return Chip(
+                                avatar: CircleAvatar(
+                                  backgroundImage: user.profilePictureUrl.isNotEmpty
+                                      ? NetworkImage(user.profilePictureUrl)
+                                      : null,
+                                  child: user.profilePictureUrl.isEmpty
+                                      ? Text(user.name.isNotEmpty ? user.name[0].toUpperCase() : '?')
+                                      : null,
+                                ),
+                                label: Text(user.name),
+                                deleteIcon: const Icon(Icons.close),
+                                onDeleted: () {
+                                  setState(() {
+                                    _selectedAttendees.remove(user);
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
 
               // All Day Toggle
               SwitchListTile(

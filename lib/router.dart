@@ -13,6 +13,7 @@ import 'package:navysync/pages/team_manage_view.dart';
 import 'package:navysync/pages/calendar_page.dart';
 import 'package:navysync/pages/create_event_page.dart';
 import 'package:navysync/pages/team_events_view.dart';
+import 'package:navysync/pages/learn_page.dart';
 import 'package:navysync/models/event.dart';
 import 'package:navysync/constants.dart';
 
@@ -94,6 +95,10 @@ final router = GoRouter(
       ],
     ),
     // Standalone routes (not in bottom nav)
+    GoRoute(
+      path: '/learn',
+      builder: (context, state) => const LearnPage(),
+    ),
     GoRoute(
       path: '/create-event',
       builder: (context, state) => const CreateEventPage(),
