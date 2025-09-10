@@ -938,7 +938,7 @@ Stay tuned for more comprehensive NJROTC learning materials!
                     ),
                   ),
                 )).toList(),
-              )).toList(),
+              )),
             ],
           ),
         ),

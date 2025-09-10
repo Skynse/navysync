@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../constants.dart';
 
 class DepartmentsPage extends StatefulWidget {
+  const DepartmentsPage({super.key});
+
   @override
   State<DepartmentsPage> createState() => _DepartmentsPageState();
 }

@@ -37,7 +37,7 @@ class PhoneNumberFormatter extends TextInputFormatter {
     int cursorPosition = 0;
     
     // Format based on number of digits
-    if (limitedDigits.length >= 1) {
+    if (limitedDigits.isNotEmpty) {
       formattedText = '(${limitedDigits.substring(0, math.min(limitedDigits.length, 3))}';
       if (limitedDigits.length > 3) {
         formattedText += ')-${limitedDigits.substring(3, math.min(limitedDigits.length, 6))}';
@@ -864,11 +864,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     }
                   }
                 },
-                // navy blue
-                child: const Text(
-                  'Logout',
-                  style: TextStyle(fontSize: 18, color: Colors.white),
-                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.navyBlue, // Navy blue
                   foregroundColor: Colors.white,
@@ -877,6 +872,11 @@ class _ProfilePageState extends State<ProfilePage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
+                ),
+                // navy blue
+                child: const Text(
+                  'Logout',
+                  style: TextStyle(fontSize: 18, color: Colors.white),
                 ),
               ),
             ),

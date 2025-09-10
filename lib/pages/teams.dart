@@ -320,7 +320,7 @@ class _TeamCreateDialogState extends State<TeamCreateDialog> {
 
   bool _isLoading = false;
   List<NavySyncUser> _availableUsers = [];
-  List<String> _selectedMembers = [];
+  final List<String> _selectedMembers = [];
 
   @override
   void initState() {

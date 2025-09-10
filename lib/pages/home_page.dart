@@ -479,7 +479,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             future: _getTeamLeaders(team.id),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
-                return Container(
+                return SizedBox(
                   height: 32,
                   child: Row(
                     children: [

@@ -75,7 +75,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
   EventVisibility _visibility = EventVisibility.team;
   String? _selectedTeamId;
-  List<NavySyncUser> _selectedAttendees = [];
+  final List<NavySyncUser> _selectedAttendees = [];
   final TextEditingController _attendeeSearchController = TextEditingController();
   bool _isAllDay = false;
   bool _isLoading = false;
@@ -330,7 +330,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                               );
                             }
                             return DropdownButtonFormField<String>(
-                              value: _selectedTeamId,
+                              initialValue: _selectedTeamId,
                               decoration: const InputDecoration(
                                 labelText: 'Select Team *',
                                 prefixIcon: Icon(Icons.group),

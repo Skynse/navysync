@@ -20,10 +20,10 @@ class _CreateAnnouncementPageState extends State<CreateAnnouncementPage> {
   AnnouncementVisibility _visibility = AnnouncementVisibility.organization;
   AnnouncementPriority _priority = AnnouncementPriority.normal;
   DateTime _expiresAt = DateTime.now().add(const Duration(days: 7));
-  bool _isPinned = false;
+  final bool _isPinned = false;
   bool _isLoading = false;
-  bool _showPreview = false;
-  List<String> _tags = [];
+  final bool _showPreview = false;
+  final List<String> _tags = [];
   final _tagController = TextEditingController();
 
   // Department and Team selection
@@ -625,7 +625,7 @@ class _CreateAnnouncementPageState extends State<CreateAnnouncementPage> {
                       border: Border.all(color: AppColors.lightBlue.withOpacity(0.3)),
                     ),
                     child: DropdownButtonFormField<String>(
-                      value: _selectedDepartmentId,
+                      initialValue: _selectedDepartmentId,
                       onChanged: (value) {
                         setState(() {
                           _selectedDepartmentId = value;
@@ -661,7 +661,7 @@ class _CreateAnnouncementPageState extends State<CreateAnnouncementPage> {
                       border: Border.all(color: AppColors.lightBlue.withOpacity(0.3)),
                     ),
                     child: DropdownButtonFormField<String>(
-                      value: _selectedTeamId,
+                      initialValue: _selectedTeamId,
                       onChanged: (value) {
                         setState(() {
                           _selectedTeamId = value;

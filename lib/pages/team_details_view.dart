@@ -357,11 +357,11 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                                                           context,
                                                           true,
                                                         ),
-                                                    child: const Text('Remove'),
                                                     style: TextButton.styleFrom(
                                                       foregroundColor:
                                                           Colors.red,
                                                     ),
+                                                    child: const Text('Remove'),
                                                   ),
                                                 ],
                                               ),

@@ -37,7 +37,7 @@ class _MenuNavState extends State<MenuNav> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       height: 100,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -48,7 +48,7 @@ class _MenuNavState extends State<MenuNav> {
 }
 
 class MenuButton extends StatefulWidget {
-  MenuButton({super.key, required this.menuOptions, required this.buttonIcon});
+  const MenuButton({super.key, required this.menuOptions, required this.buttonIcon});
 
   final List<MenuOption> menuOptions;
   final IconData buttonIcon;
@@ -132,10 +132,10 @@ class _MenuButtonState extends State<MenuButton> {
           _showMenu(context, buttonPos);
         }
       },
-      child: Container(
-        child: Icon(widget.buttonIcon, size: 30),
+      child: SizedBox(
         width: buttonWidth,
         height: 100,
+        child: Icon(widget.buttonIcon, size: 30),
       ),
     );
   }

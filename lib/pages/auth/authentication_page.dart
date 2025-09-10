@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
-import 'package:navysync/models/user.dart';
 import 'package:navysync/pages/guest_page.dart';
 
 class AuthenticationPage extends StatefulWidget {

@@ -523,8 +523,8 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
         onPressed: () => _showCreatePersonalEventDialog(context),
         backgroundColor: AppColors.navyBlue,
         foregroundColor: AppColors.white,
-        child: const Icon(Icons.add),
         tooltip: 'Create Personal Event',
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -628,7 +628,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                                 isAllDay = value;
                               });
                             },
-                            activeColor: AppColors.navyBlue,
+                            activeThumbColor: AppColors.navyBlue,
                           ),
                         ],
                       ),
