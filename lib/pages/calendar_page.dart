@@ -78,7 +78,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                 const SnackBar(
                   content: Text('Refreshing events...'),
                   duration: Duration(seconds: 1),
-                  backgroundColor: AppColors.primaryBlue,
+                  backgroundColor: Color.from(alpha: 1, red: 0, green: 0.2, blue: 0.4),
                 ),
               );
             },
@@ -148,7 +148,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                     ],
                   ),
                   child: SfCalendar(
-                    view: CalendarView.month,
+                    view: CalendarView.timelineMonth,
                     controller: _calendarController,
                     dataSource: _EventDataSource(appointments),
                     firstDayOfWeek: 1, // Start week on Monday (1 = Monday, 7 = Sunday)
