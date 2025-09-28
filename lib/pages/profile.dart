@@ -21,7 +21,7 @@ class PhoneNumberFormatter extends TextInputFormatter {
   ) {
     // Get only digits from the new text
     final digits = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
-    
+
     // Don't process if no digits
     if (digits.isEmpty) {
       return const TextEditingValue(
@@ -29,33 +29,35 @@ class PhoneNumberFormatter extends TextInputFormatter {
         selection: TextSelection.collapsed(offset: 0),
       );
     }
-    
+
     // Limit to 10 digits
     final limitedDigits = digits.length > 10 ? digits.substring(0, 10) : digits;
-    
+
     String formattedText = '';
     int cursorPosition = 0;
-    
+
     // Format based on number of digits
     if (limitedDigits.isNotEmpty) {
-      formattedText = '(${limitedDigits.substring(0, math.min(limitedDigits.length, 3))}';
+      formattedText =
+          '(${limitedDigits.substring(0, math.min(limitedDigits.length, 3))}';
       if (limitedDigits.length > 3) {
-        formattedText += ')-${limitedDigits.substring(3, math.min(limitedDigits.length, 6))}';
+        formattedText +=
+            ')-${limitedDigits.substring(3, math.min(limitedDigits.length, 6))}';
         if (limitedDigits.length > 6) {
           formattedText += '-${limitedDigits.substring(6)}';
         }
       }
     }
-    
+
     // Calculate cursor position - always place at the end for better UX
     cursorPosition = formattedText.length;
-    
-    // If user is deleting and cursor would be in the middle of a separator, 
+
+    // If user is deleting and cursor would be in the middle of a separator,
     // move it to a more natural position
     if (newValue.text.length < oldValue.text.length) {
       cursorPosition = formattedText.length;
     }
-    
+
     return TextEditingValue(
       text: formattedText,
       selection: TextSelection.collapsed(offset: cursorPosition),
@@ -97,7 +99,8 @@ class _ProfilePageState extends State<ProfilePage> {
         return 'Member';
       default:
         // Fallback: convert underscores to spaces and title case
-        return role.toLowerCase()
+        return role
+            .toLowerCase()
             .split('_')
             .map((word) => word[0].toUpperCase() + word.substring(1))
             .join(' ');
@@ -117,7 +120,8 @@ class _ProfilePageState extends State<ProfilePage> {
       }
 
       // Fetch user's department
-      if (_currentUser?.departmentId != null && _currentUser!.departmentId.isNotEmpty) {
+      if (_currentUser?.departmentId != null &&
+          _currentUser!.departmentId.isNotEmpty) {
         final deptDoc =
             await FirebaseFirestore.instance
                 .collection('departments')
@@ -165,18 +169,8 @@ class _ProfilePageState extends State<ProfilePage> {
       if (image == null) return;
 
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
 
-      // Show loading indicator
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const Center(
-            child: CircularProgressIndicator(),
-          ),
-        );
-      }
+      if (user == null) return;
 
       // Upload to Firebase Storage
       final storageRef = FirebaseStorage.instance
@@ -189,19 +183,15 @@ class _ProfilePageState extends State<ProfilePage> {
       final downloadUrl = await snapshot.ref.getDownloadURL();
 
       // Update user document with new profile picture URL
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .update({
-        'profilePictureUrl': downloadUrl,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      // Reload user data
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
+        {
+          'profilePictureUrl': downloadUrl,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+      );
       await _loadUserData();
 
       if (mounted) {
-        Navigator.of(context).pop(); // Close loading dialog
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Profile picture updated successfully!'),
@@ -211,7 +201,6 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     } catch (e) {
       if (mounted) {
-        Navigator.of(context).pop(); // Close loading dialog
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to update profile picture: $e'),
@@ -228,23 +217,27 @@ class _ProfilePageState extends State<ProfilePage> {
     String currentLastName = '';
     String currentBio = '';
     String currentPhone = _currentUser?.phoneNumber ?? '';
-    
+
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
+        final userDoc =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .get();
         if (userDoc.exists) {
           final userData = userDoc.data()!;
           currentFirstName = userData['firstName'] ?? '';
           currentLastName = userData['lastName'] ?? '';
           currentBio = userData['bio'] ?? '';
-          currentPhone = userData['phoneNumber'] ?? _currentUser?.phoneNumber ?? '';
-          
+          currentPhone =
+              userData['phoneNumber'] ?? _currentUser?.phoneNumber ?? '';
+
           // If firstName/lastName don't exist but name does, split it
-          if (currentFirstName.isEmpty && currentLastName.isEmpty && userData['name'] != null) {
+          if (currentFirstName.isEmpty &&
+              currentLastName.isEmpty &&
+              userData['name'] != null) {
             final nameParts = userData['name'].toString().split(' ');
             if (nameParts.isNotEmpty) {
               currentFirstName = nameParts[0];
@@ -258,122 +251,123 @@ class _ProfilePageState extends State<ProfilePage> {
     } catch (e) {
       // Handle error silently
     }
-    
+
     final firstNameController = TextEditingController(text: currentFirstName);
     final lastNameController = TextEditingController(text: currentLastName);
     final phoneController = TextEditingController(text: currentPhone);
     final bioController = TextEditingController(text: currentBio);
-    
+
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Profile'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  radius: 40,
-                  backgroundImage: _currentUser?.profilePictureUrl != null &&
-                          _currentUser!.profilePictureUrl.isNotEmpty
-                      ? NetworkImage(_currentUser!.profilePictureUrl)
-                      : null,
-                  backgroundColor: AppColors.navyBlue.withOpacity(0.8),
-                  child: _currentUser?.profilePictureUrl == null ||
-                          _currentUser!.profilePictureUrl.isEmpty
-                      ? Text(
-                          _currentUser?.name != null &&
-                                  _currentUser!.name.isNotEmpty
-                              ? _currentUser!.name[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                            fontSize: 24,
-                            color: Colors.white,
-                          ),
-                        )
-                      : null,
-                ),
-                const SizedBox(height: 16),
-                TextButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context); // Close the dialog first
-                    _changeProfilePicture();
-                  },
-                  icon: const Icon(Icons.photo_camera),
-                  label: const Text('Change Profile Picture'),
-                ),
-                const SizedBox(height: 16),
-                Row(
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Edit Profile'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: firstNameController,
-                        decoration: const InputDecoration(
-                          labelText: 'First Name',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.person),
-                        ),
-                      ),
+                    CircleAvatar(
+                      radius: 40,
+                      backgroundImage:
+                          _currentUser?.profilePictureUrl != null &&
+                                  _currentUser!.profilePictureUrl.isNotEmpty
+                              ? NetworkImage(_currentUser!.profilePictureUrl)
+                              : null,
+                      backgroundColor: AppColors.navyBlue.withOpacity(0.8),
+                      child:
+                          _currentUser?.profilePictureUrl == null ||
+                                  _currentUser!.profilePictureUrl.isEmpty
+                              ? Text(
+                                _currentUser?.name != null &&
+                                        _currentUser!.name.isNotEmpty
+                                    ? _currentUser!.name[0].toUpperCase()
+                                    : '?',
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  color: Colors.white,
+                                ),
+                              )
+                              : null,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: lastNameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Last Name',
-                          border: OutlineInputBorder(),
+                    const SizedBox(height: 16),
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context); // Close the dialog first
+                        _changeProfilePicture();
+                      },
+                      icon: const Icon(Icons.photo_camera),
+                      label: const Text('Change Profile Picture'),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: firstNameController,
+                            decoration: const InputDecoration(
+                              labelText: 'First Name',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.person),
+                            ),
+                          ),
                         ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: lastNameController,
+                            decoration: const InputDecoration(
+                              labelText: 'Last Name',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: phoneController,
+                      decoration: const InputDecoration(
+                        labelText: 'Phone Number',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.phone),
+                        hintText: '(555)-123-4567',
                       ),
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: [PhoneNumberFormatter()],
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: bioController,
+                      decoration: const InputDecoration(
+                        labelText: 'Bio',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.info),
+                        hintText: 'Tell us about yourself...',
+                      ),
+                      maxLines: 3,
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: phoneController,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone Number',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.phone),
-                    hintText: '(555)-123-4567',
-                  ),
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [
-                    PhoneNumberFormatter(),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: bioController,
-                  decoration: const InputDecoration(
-                    labelText: 'Bio',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.info),
-                    hintText: 'Tell us about yourself...',
-                  ),
-                  maxLines: 3,
-                ),
-              ],
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.navyBlue,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Save'),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.navyBlue,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
     );
 
     if (result == true) {
@@ -400,17 +394,16 @@ class _ProfilePageState extends State<ProfilePage> {
       final fullName = '$firstName $lastName'.trim();
 
       // Update Firestore document
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .update({
-        'firstName': firstName,
-        'lastName': lastName,
-        'name': fullName, // Keep the name field for backward compatibility
-        'bio': bio,
-        'phoneNumber': phoneNumber,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
+        {
+          'firstName': firstName,
+          'lastName': lastName,
+          'name': fullName, // Keep the name field for backward compatibility
+          'bio': bio,
+          'phoneNumber': phoneNumber,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+      );
 
       // Update Firebase Auth display name
       await user.updateDisplayName(fullName);
@@ -443,11 +436,12 @@ class _ProfilePageState extends State<ProfilePage> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return '';
 
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      
+      final userDoc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+
       if (userDoc.exists) {
         return userDoc.data()?['bio'] ?? '';
       }
@@ -462,11 +456,12 @@ class _ProfilePageState extends State<ProfilePage> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return '';
 
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      
+      final userDoc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+
       if (userDoc.exists) {
         return userDoc.data()?['phoneNumber'] ?? '';
       }
@@ -481,27 +476,30 @@ class _ProfilePageState extends State<ProfilePage> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return '';
 
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      
+      final userDoc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+
       if (userDoc.exists) {
         final userData = userDoc.data()!;
         final firstName = userData['firstName'] as String?;
         final lastName = userData['lastName'] as String?;
-        
+
         // Prefer firstName + lastName if both exist
-        if (firstName != null && firstName.isNotEmpty && 
-            lastName != null && lastName.isNotEmpty) {
+        if (firstName != null &&
+            firstName.isNotEmpty &&
+            lastName != null &&
+            lastName.isNotEmpty) {
           return '$firstName $lastName';
         }
-        
+
         // Fall back to just firstName if lastName is empty
         if (firstName != null && firstName.isNotEmpty) {
           return firstName;
         }
-        
+
         // Fall back to the name field
         return userData['name'] ?? '';
       }
@@ -570,7 +568,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       leading: Icon(Icons.photo_camera),
                       title: Text('Change Profile Picture'),
                       onTap: () {
-                        Navigator.pop(context);
                         _changeProfilePicture();
                       },
                     ),
@@ -612,10 +609,7 @@ class _ProfilePageState extends State<ProfilePage> {
       appBar: AppBar(
         title: const Text(
           'Profile',
-          style: TextStyle(
-            color: AppColors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: AppColors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: AppColors.navyBlue,
         elevation: 2,
@@ -655,7 +649,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               : null,
                       backgroundColor: AppColors.navyBlue.withOpacity(0.8),
                       child:
-                          _currentUser?.profilePictureUrl== null ||
+                          _currentUser?.profilePictureUrl == null ||
                                   _currentUser!.profilePictureUrl.isEmpty
                               ? Text(
                                 _currentUser?.name != null &&
@@ -674,9 +668,10 @@ class _ProfilePageState extends State<ProfilePage> {
                     FutureBuilder<String>(
                       future: _getUserDisplayName(),
                       builder: (context, snapshot) {
-                        String displayName = snapshot.data ?? 
-                            _currentUser?.name ?? 
-                            FirebaseAuth.instance.currentUser?.email ?? 
+                        String displayName =
+                            snapshot.data ??
+                            _currentUser?.name ??
+                            FirebaseAuth.instance.currentUser?.email ??
                             'User';
                         return Text(
                           displayName,
@@ -826,24 +821,27 @@ class _ProfilePageState extends State<ProfilePage> {
                   // Show confirmation dialog
                   final shouldLogout = await showDialog<bool>(
                     context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Confirm Logout'),
-                      content: const Text('Are you sure you want to log out?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancel'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.navyBlue,
-                            foregroundColor: Colors.white,
+                    builder:
+                        (context) => AlertDialog(
+                          title: const Text('Confirm Logout'),
+                          content: const Text(
+                            'Are you sure you want to log out?',
                           ),
-                          child: const Text('Logout'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Cancel'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.navyBlue,
+                                foregroundColor: Colors.white,
+                              ),
+                              child: const Text('Logout'),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
                   );
 
                   if (shouldLogout == true) {
