@@ -4,9 +4,9 @@ import '../constants.dart';
 
 enum EventVisibility {
   organization, // Everyone in the organization can see
-  department,   // Only department members can see
-  team,        // Only team members can see
-  private,     // Only invited attendees can see
+  department, // Only department members can see
+  team, // Only team members can see
+  private, // Only invited attendees can see
 }
 
 class Event {
@@ -21,7 +21,8 @@ class Event {
   final EventVisibility visibility;
   final String? departmentId; // Required if visibility is department
   final String? teamId; // Required if visibility is team
-  final List<String> attendees; // List of user IDs who can attend (for private events)
+  final List<String>
+  attendees; // List of user IDs who can attend (for private events)
   final List<String> tags; // Optional tags for categorization
   final String? imageUrl; // Optional event image
   final bool isRecurring;
@@ -54,10 +55,7 @@ class Event {
 
   factory Event.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    return Event.fromJson({
-      'id': doc.id,
-      ...data,
-    });
+    return Event.fromJson({'id': doc.id, ...data});
   }
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -65,9 +63,10 @@ class Event {
       id: json['id'] ?? '',
       title: json['title'] ?? '',
       description: json['description'] ?? '',
-      date: json['date'] is Timestamp
-          ? (json['date'] as Timestamp).toDate()
-          : json['date'] is String
+      date:
+          json['date'] is Timestamp
+              ? (json['date'] as Timestamp).toDate()
+              : json['date'] is String
               ? DateTime.tryParse(json['date']) ?? DateTime.now()
               : DateTime.now(),
       startTime: json['startTime'] as Timestamp?,
@@ -82,12 +81,14 @@ class Event {
       imageUrl: json['imageUrl'],
       isRecurring: json['isRecurring'] ?? false,
       recurringPattern: json['recurringPattern'] as Map<String, dynamic>?,
-      createdAt: json['createdAt'] is Timestamp
-          ? (json['createdAt'] as Timestamp).toDate()
-          : DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-      updatedAt: json['updatedAt'] is Timestamp
-          ? (json['updatedAt'] as Timestamp).toDate()
-          : DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
+      createdAt:
+          json['createdAt'] is Timestamp
+              ? (json['createdAt'] as Timestamp).toDate()
+              : DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      updatedAt:
+          json['updatedAt'] is Timestamp
+              ? (json['updatedAt'] as Timestamp).toDate()
+              : DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
       isActive: json['isActive'] ?? true,
     );
   }
@@ -147,8 +148,8 @@ class Event {
     String userDepartmentId,
     List<String> userTeamIds,
   ) {
-    // Always allow the creator and moderators
-    if (userId == createdBy || userRoles.contains(UserRoles.moderator)) {
+    // Always allow the creator
+    if (userId == createdBy) {
       return true;
     }
 

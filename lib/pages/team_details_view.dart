@@ -97,7 +97,10 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
           await FirebaseFirestore.instance
               .collection("events")
               .where('teamId', isEqualTo: widget.teamId)
-              .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(DateTime.now()))
+              .where(
+                'date',
+                isGreaterThanOrEqualTo: Timestamp.fromDate(DateTime.now()),
+              )
               .orderBy('date')
               .limit(5)
               .get();
@@ -297,7 +300,7 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                         itemCount: _teamMembers.length,
                         itemBuilder: (context, index) {
                           final member = _teamMembers[index];
-                          final bool isTeamLeader =
+                          final bool isTeamHead =
                               member.id == _team!.teamLeaderId;
 
                           return ListTile(
@@ -320,11 +323,9 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                                       : null,
                             ),
                             title: Text(member["name"] ?? 'Unknown User'),
-                            subtitle: Text(
-                              isTeamLeader ? 'Team Leader' : 'Member',
-                            ),
+                            subtitle: Text(isTeamHead ? 'Team Head' : 'Member'),
                             trailing:
-                                _canManageTeam && !isTeamLeader
+                                _canManageTeam && !isTeamHead
                                     ? IconButton(
                                       icon: const Icon(
                                         Icons.remove_circle_outline,
@@ -562,21 +563,18 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
   Widget _buildEventDetailsDialog(Map<String, dynamic> event) {
     final eventDate = event['date'] as Timestamp?;
     final displayDate = eventDate?.toDate() ?? DateTime.now();
-    
+
     return AlertDialog(
       title: Text(
         event['title'] ?? 'Event Details',
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          color: Colors.blue,
-        ),
+        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
       ),
       content: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (event['description'] != null && 
+            if (event['description'] != null &&
                 event['description'].toString().isNotEmpty) ...[
               const Text(
                 'Description:',
@@ -599,7 +597,7 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
               ],
             ),
             const SizedBox(height: 16),
-            if (event['location'] != null && 
+            if (event['location'] != null &&
                 event['location'].toString().isNotEmpty) ...[
               const Text(
                 'Location:',
@@ -685,8 +683,8 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            status == 'attending' 
-                ? 'Marked as attending!' 
+            status == 'attending'
+                ? 'Marked as attending!'
                 : 'Marked as not attending.',
           ),
           backgroundColor: status == 'attending' ? Colors.green : Colors.red,

@@ -9,7 +9,7 @@ class NavySyncUser {
   final String departmentId; // Primary department assignment
   final List<String> teamIds; // Teams the user belongs to
   final List<String>
-  roles; // Multiple roles possible: 'MODERATOR', 'DEPARTMENT_HEAD', 'TEAM_LEADER', 'MEMBER'
+  roles; // Multiple roles possible: 'DEPARTMENT_HEAD', 'TEAM_HEAD', 'MEMBER'
   final Map<String, dynamic>
   permissions; // Specific permissions by resource type
   final DateTime createdAt;
@@ -84,15 +84,13 @@ class NavySyncUser {
   }
 
   // Helper methods for permission checks
-  bool isModerator() => roles.contains(UserRoles.moderator);
-
   bool isDepartmentHead([String? deptId]) {
     if (!roles.contains(UserRoles.departmentHead)) return false;
     return deptId == null || departmentId == deptId;
   }
 
-  bool isTeamLeader([String? teamId]) {
-    if (!roles.contains(UserRoles.teamLeader)) return false;
+  bool isTeamHead([String? teamId]) {
+    if (!roles.contains(UserRoles.teamHead)) return false;
     return teamId == null || teamIds.contains(teamId);
   }
 
@@ -102,8 +100,6 @@ class NavySyncUser {
 
   // Check if user has access to a particular event
   bool canAccessEvent(Map<String, dynamic> eventData) {
-    if (isModerator()) return true;
-
     final eventDeptId = eventData['departmentId'] as String?;
     final eventTeamId = eventData['teamId'] as String?;
     final eventType =
@@ -119,7 +115,7 @@ class NavySyncUser {
         return true;
       case EventTypes.team:
         if (eventTeamId != null) {
-          return teamIds.contains(eventTeamId) || isTeamLeader(eventTeamId);
+          return teamIds.contains(eventTeamId) || isTeamHead(eventTeamId);
         }
         return false;
       case EventTypes.organization:
@@ -134,9 +130,6 @@ class NavySyncUser {
 
   // Check if user has permission for a specific action
   bool hasPermission(String action, String resourceType) {
-    // Moderators have all permissions
-    if (isModerator()) return true;
-
     // Check role-specific permissions
     if (permissions.containsKey(resourceType)) {
       final allowedActions = List<String>.from(permissions[resourceType] ?? []);
@@ -145,13 +138,18 @@ class NavySyncUser {
 
     // Default permissions based on role
     if (roles.contains(UserRoles.departmentHead) &&
-        ['department', 'team', 'event'].contains(resourceType)) {
-      return ['view', 'create', 'edit'].contains(action);
+        [
+          'department',
+          'team',
+          'event',
+          'announcement',
+        ].contains(resourceType)) {
+      return ['view', 'create', 'edit', 'invite'].contains(action);
     }
 
-    if (roles.contains(UserRoles.teamLeader) &&
-        ['team', 'event'].contains(resourceType)) {
-      return ['view', 'create'].contains(action);
+    if (roles.contains(UserRoles.teamHead) &&
+        ['team', 'event', 'announcement'].contains(resourceType)) {
+      return ['view', 'create', 'invite'].contains(action);
     }
 
     // Basic member permissions

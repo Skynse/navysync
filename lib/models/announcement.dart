@@ -167,8 +167,8 @@ class Announcement {
     String userDepartmentId,
     List<String> userTeamIds,
   ) {
-    // Always allow the author and moderators
-    if (userId == authorId || userRoles.contains(UserRoles.moderator)) {
+    // Always allow the author
+    if (userId == authorId) {
       return true;
     }
 

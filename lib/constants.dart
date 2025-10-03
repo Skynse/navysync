@@ -21,7 +21,7 @@ class AppDimensions {
   static const double paddingM = 16.0;
   static const double paddingL = 24.0;
   static const double paddingXL = 32.0;
-  
+
   static const double radiusS = 4.0;
   static const double radiusM = 8.0;
   static const double radiusL = 12.0;
@@ -47,8 +47,7 @@ class EventTypes {
 
 // User Roles
 class UserRoles {
-  static const String moderator = 'MODERATOR';
   static const String departmentHead = 'DEPARTMENT_HEAD';
-  static const String teamLeader = 'TEAM_LEADER';
+  static const String teamHead = 'TEAM_HEAD';
   static const String member = 'MEMBER';
 }
