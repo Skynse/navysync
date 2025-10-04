@@ -5,6 +5,7 @@ import 'package:navysync/pages/auth/authentication_page.dart';
 import 'package:navysync/pages/auth/verify_email_page.dart';
 import 'package:navysync/pages/create_announcement_page.dart';
 import 'package:navysync/pages/departments.dart';
+import 'package:navysync/pages/department_details_view.dart';
 import 'package:navysync/pages/home_page.dart';
 import 'package:navysync/pages/profile.dart';
 import 'package:navysync/pages/team_details_view.dart';
@@ -72,7 +73,34 @@ final router = GoRouter(
           routes: [
             GoRoute(
               path: '/departments',
-              builder: (context, state) => DepartmentsPage(),
+              builder: (context, state) => const DepartmentsView(),
+              routes: [
+                GoRoute(
+                  path: ':departmentId',
+                  builder: (context, state) {
+                    final departmentId = state.pathParameters['departmentId']!;
+                    return DepartmentDetailsView(departmentId: departmentId);
+                  },
+                  routes: [
+                    GoRoute(
+                      path: 'manage',
+                      builder: (context, state) {
+                        final departmentId =
+                            state.pathParameters['departmentId']!;
+                        // TODO: Create DepartmentManageView
+                        return Scaffold(
+                          appBar: AppBar(
+                            title: const Text('Manage Department'),
+                          ),
+                          body: const Center(
+                            child: Text('Department management coming soon'),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ],
             ),
           ],
         ),
@@ -95,10 +123,7 @@ final router = GoRouter(
       ],
     ),
     // Standalone routes (not in bottom nav)
-    GoRoute(
-      path: '/learn',
-      builder: (context, state) => const LearnPage(),
-    ),
+    GoRoute(path: '/learn', builder: (context, state) => const LearnPage()),
     GoRoute(
       path: '/create-event',
       builder: (context, state) => const CreateEventPage(),
