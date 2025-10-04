@@ -96,10 +96,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
 
       // Load all dashboard data concurrently
-      await Future.wait([
-        _loadUserTeams(),
-        _loadStatistics(),
-      ]);
+      await Future.wait([_loadUserTeams(), _loadStatistics()]);
     } catch (e) {
       _error = 'Failed to load dashboard: $e';
     } finally {
@@ -453,10 +450,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       SizedBox(height: 2),
                       Text(
                         team.description,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -494,10 +488,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       SizedBox(width: 8),
                       Text(
                         'Loading leaders...',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
                   ),
@@ -505,70 +496,82 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               }
 
               final leaders = snapshot.data!;
-              final totalMembers = team.members.length + (team.teamLeaderId.isNotEmpty ? 1 : 0);
+              final totalMembers =
+                  team.members.length + (team.teamLeaderId.isNotEmpty ? 1 : 0);
 
               return Row(
                 children: [
                   // Overlapping commander circles
                   SizedBox(
                     height: 32,
-                    width: leaders.length > 1 ? (leaders.length * 20.0) + 12 : 32,
+                    width:
+                        leaders.length > 1 ? (leaders.length * 20.0) + 12 : 32,
                     child: Stack(
-                      children: leaders.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final leader = entry.value;
-                        
-                        // Determine background color based on role
-                        Color backgroundColor;
-                        if (leader['isLeader']) {
-                          backgroundColor = AppColors.navyBlue; // Team leader
-                        } else if (leader['isModerator']) {
-                          backgroundColor = Colors.red.shade700; // Moderator
-                        } else if (leader['isDepartmentHead']) {
-                          backgroundColor = Colors.purple.shade700; // Department head
-                        } else {
-                          backgroundColor = AppColors.primaryBlue; // Default
-                        }
-                        
-                        return Positioned(
-                          left: index * 20.0, // 20px overlap for semi-covered effect
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 2,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 3,
-                                  offset: Offset(0, 1),
+                      children:
+                          leaders.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final leader = entry.value;
+
+                            // Determine background color based on role
+                            Color backgroundColor;
+                            if (leader['isLeader']) {
+                              backgroundColor = AppColors.navyBlue; // Team head
+                            } else if (leader['isDepartmentHead']) {
+                              backgroundColor =
+                                  Colors.purple.shade700; // Department head
+                            } else {
+                              backgroundColor =
+                                  AppColors.primaryBlue; // Default
+                            }
+
+                            return Positioned(
+                              left:
+                                  index *
+                                  20.0, // 20px overlap for semi-covered effect
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 2,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 3,
+                                      offset: Offset(0, 1),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                            child: CircleAvatar(
-                              radius: 16,
-                              backgroundImage: leader['profilePictureUrl'] != null &&
-                                      leader['profilePictureUrl'].isNotEmpty
-                                  ? NetworkImage(leader['profilePictureUrl'])
-                                  : null,
-                              backgroundColor: backgroundColor,
-                              child: leader['profilePictureUrl'] == null ||
-                                      leader['profilePictureUrl'].isEmpty
-                                  ? Text(
-                                      (leader['name'] ?? '?')[0].toUpperCase(),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : null,
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                                child: CircleAvatar(
+                                  radius: 16,
+                                  backgroundImage:
+                                      leader['profilePictureUrl'] != null &&
+                                              leader['profilePictureUrl']
+                                                  .isNotEmpty
+                                          ? NetworkImage(
+                                            leader['profilePictureUrl'],
+                                          )
+                                          : null,
+                                  backgroundColor: backgroundColor,
+                                  child:
+                                      leader['profilePictureUrl'] == null ||
+                                              leader['profilePictureUrl']
+                                                  .isEmpty
+                                          ? Text(
+                                            (leader['name'] ?? '?')[0]
+                                                .toUpperCase(),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                          : null,
+                                ),
+                              ),
+                            );
+                          }).toList(),
                     ),
                   ),
                   SizedBox(width: 12),
@@ -577,7 +580,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          leaders.length == 1 
+                          leaders.length == 1
                               ? 'Team Commander'
                               : 'Team Leadership',
                           style: TextStyle(
@@ -626,7 +629,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
 
       final leaderIds = <String>[];
-      
+
       // Add team leader
       if (team.teamLeaderId.isNotEmpty) {
         leaderIds.add(team.teamLeaderId);
@@ -635,17 +638,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // Find admins/moderators among team members
       if (team.members.isNotEmpty) {
         // Get user data to check for admin/moderator roles
-        final membersSnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .where(FieldPath.documentId, whereIn: team.members.take(10).toList())
-            .get();
+        final membersSnapshot =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .where(
+                  FieldPath.documentId,
+                  whereIn: team.members.take(10).toList(),
+                )
+                .get();
 
         for (final doc in membersSnapshot.docs) {
           final data = doc.data();
           final roles = List<String>.from(data['roles'] ?? []);
-          
+
           // Check if user has admin/moderator roles
-          if (roles.contains('MODERATOR') || roles.contains('DEPARTMENT_HEAD')) {
+          if (roles.contains('MODERATOR') ||
+              roles.contains('DEPARTMENT_HEAD')) {
             leaderIds.add(doc.id);
           }
         }
@@ -660,20 +668,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       // Get user data for all leaders
       final leadersData = <Map<String, dynamic>>[];
-      
+
       // Query users in batches (Firestore limit is 10 for 'whereIn')
       for (int i = 0; i < uniqueLeaderIds.length; i += 10) {
         final batch = uniqueLeaderIds.skip(i).take(10).toList();
-        
-        final leadersSnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .where(FieldPath.documentId, whereIn: batch)
-            .get();
+
+        final leadersSnapshot =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .where(FieldPath.documentId, whereIn: batch)
+                .get();
 
         for (final doc in leadersSnapshot.docs) {
           final data = doc.data();
           final roles = List<String>.from(data['roles'] ?? []);
-          
+
           leadersData.add({
             'id': doc.id,
             'name': data['name'] ?? 'Unknown User',
@@ -681,18 +690,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             'email': data['email'] ?? '',
             'isLeader': doc.id == team.teamLeaderId,
             'roles': roles,
-            'isModerator': roles.contains('MODERATOR'),
             'isDepartmentHead': roles.contains('DEPARTMENT_HEAD'),
           });
         }
       }
 
-      // Sort to put team leader first, then moderators, then department heads
+      // Sort to put team leader first, then department heads
       leadersData.sort((a, b) {
         if (a['isLeader'] && !b['isLeader']) return -1;
         if (!a['isLeader'] && b['isLeader']) return 1;
-        if (a['isModerator'] && !b['isModerator']) return -1;
-        if (!a['isModerator'] && b['isModerator']) return 1;
         if (a['isDepartmentHead'] && !b['isDepartmentHead']) return -1;
         if (!a['isDepartmentHead'] && b['isDepartmentHead']) return 1;
         return 0;
@@ -846,7 +852,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: CustomScrollView(
           slivers: [
             SliverAppBar(
-              expandedHeight: MediaQuery.of(context).size.height * 0.22, // 22% of screen height
+              expandedHeight:
+                  MediaQuery.of(context).size.height *
+                  0.22, // 22% of screen height
               floating: false,
               pinned: true,
               elevation: 0,
@@ -881,10 +889,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   onPressed: () => context.push('/learn'),
                   tooltip: 'Learn!',
                 ),
-                IconButton(
-                  icon: Icon(Icons.calendar_month, color: Colors.white),
-                  onPressed: () => context.push('/calendar'),
-                ),
+
                 SizedBox(width: 16),
               ],
             ),

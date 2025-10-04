@@ -164,11 +164,10 @@ class AuthService {
   }
 
   // Check user roles
-  bool isModerator() => _currentUser?.isModerator() ?? false;
   bool isDepartmentHead([String? deptId]) =>
       _currentUser?.isDepartmentHead(deptId) ?? false;
-  bool isTeamLeader([String? teamId]) =>
-      _currentUser?.isTeamLeader(teamId) ?? false;
+  bool isTeamHead([String? teamId]) =>
+      _currentUser?.isTeamHead(teamId) ?? false;
 
   // Delete account
   Future<void> deleteAccount() async {

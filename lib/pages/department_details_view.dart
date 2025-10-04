@@ -2,38 +2,36 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:navysync/models/department.dart';
 import 'package:navysync/models/event.dart';
-import 'package:navysync/models/team.dart';
 import 'package:navysync/models/user.dart';
 import 'package:navysync/pages/team_events_view.dart';
-import 'package:navysync/pages/teams.dart';
-import 'package:navysync/services/auth_service.dart';
+import '../constants.dart';
 
-class TeamDetailsView extends StatefulWidget {
-  final String teamId;
-  const TeamDetailsView({super.key, required this.teamId});
+class DepartmentDetailsView extends StatefulWidget {
+  final String departmentId;
+  const DepartmentDetailsView({super.key, required this.departmentId});
 
   @override
-  State<TeamDetailsView> createState() => _TeamDetailsViewState();
+  State<DepartmentDetailsView> createState() => _DepartmentDetailsViewState();
 }
 
-class _TeamDetailsViewState extends State<TeamDetailsView> {
-  final AuthService _authService = AuthService();
+class _DepartmentDetailsViewState extends State<DepartmentDetailsView> {
   DocumentSnapshot? _currentUser;
-  Team? _team;
-  List<QueryDocumentSnapshot> _teamMembers = [];
-  List<dynamic> _teamAnnouncements = [];
-  List<dynamic> _teamEvents = [];
+  Department? _department;
+  List<QueryDocumentSnapshot> _departmentMembers = [];
+  List<dynamic> _departmentAnnouncements = [];
+  List<dynamic> _departmentEvents = [];
   bool _isLoading = true;
-  bool _canManageTeam = false;
+  bool _canManageDepartment = false;
 
   @override
   void initState() {
     super.initState();
-    _loadTeamData();
+    _loadDepartmentData();
   }
 
-  Future<void> _loadTeamData() async {
+  Future<void> _loadDepartmentData() async {
     setState(() => _isLoading = true);
 
     try {
@@ -44,59 +42,60 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
               .doc(FirebaseAuth.instance.currentUser?.uid)
               .get();
 
-      // Fetch team data
-      final teamDoc =
+      // Fetch department data
+      final departmentDoc =
           await FirebaseFirestore.instance
-              .collection('teams')
-              .doc(widget.teamId)
+              .collection('departments')
+              .doc(widget.departmentId)
               .get();
 
-      if (!teamDoc.exists) {
+      if (!departmentDoc.exists) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Team not found')));
+        ).showSnackBar(const SnackBar(content: Text('Department not found')));
         context.pop();
         return;
       }
 
-      _team = Team.fromFirestore(teamDoc);
+      _department = Department.fromFirestore(departmentDoc);
 
       // Check permissions
-      _canManageTeam =
-          _team!.teamLeaderId == _currentUser?.id ||
-          _currentUser?["roles"].contains('MODERATOR') ||
-          _currentUser?["roles"].contains('DEPARTMENT_HEAD');
+      _canManageDepartment =
+          _department!.departmentHeadId == _currentUser?.id ||
+          _department!.assistantHeadIds.contains(_currentUser?.id) ||
+          _currentUser?["roles"].contains('MODERATOR');
 
-      // Fetch team members
-      if (_team!.members.isNotEmpty) {
+      // Fetch department members (all including head and assistants)
+      final allMemberIds = _department!.allMemberIds;
+      if (allMemberIds.isNotEmpty) {
         final membersSnapshot =
             await FirebaseFirestore.instance
                 .collection('users')
-                .where(FieldPath.documentId, whereIn: _team!.members)
+                .where(FieldPath.documentId, whereIn: allMemberIds)
                 .get();
 
-        _teamMembers = membersSnapshot.docs;
+        _departmentMembers = membersSnapshot.docs;
       }
 
-      // Fetch team announcements
+      // Fetch department announcements
       final announcementsSnapshot =
           await FirebaseFirestore.instance
               .collection('announcements')
-              .where('teamId', isEqualTo: widget.teamId)
+              .where('departmentId', isEqualTo: widget.departmentId)
               .orderBy('createdAt', descending: true)
               .limit(5)
               .get();
 
-      _teamAnnouncements =
+      _departmentAnnouncements =
           announcementsSnapshot.docs
               .map((doc) => {'id': doc.id, ...doc.data()})
               .toList();
 
-      // Fetch team events
+      // Fetch department events
       final eventsSnapshot =
           await FirebaseFirestore.instance
               .collection("events")
-              .where('teamId', isEqualTo: widget.teamId)
+              .where('departmentId', isEqualTo: widget.departmentId)
               .where(
                 'date',
                 isGreaterThanOrEqualTo: Timestamp.fromDate(DateTime.now()),
@@ -105,14 +104,14 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
               .limit(5)
               .get();
 
-      _teamEvents =
+      _departmentEvents =
           eventsSnapshot.docs
               .map((doc) => {'id': doc.id, ...doc.data()})
               .toList();
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error loading team data: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading department data: $e')),
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -127,7 +126,7 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Text('Add Team Member'),
+            title: const Text('Add Department Member'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -160,24 +159,27 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                     if (userQuerySnapshot.docs.isNotEmpty) {
                       final userId = userQuerySnapshot.docs.first.id;
 
-                      // Add user to team
+                      // Add user to department
                       await FirebaseFirestore.instance
-                          .collection('teams')
-                          .doc(widget.teamId)
+                          .collection('departments')
+                          .doc(widget.departmentId)
                           .update({
                             'members': FieldValue.arrayUnion([userId]),
+                            'updatedAt': FieldValue.serverTimestamp(),
                           });
 
-                      // Add team to user's teamIds
+                      // Add department to user's departmentIds
                       await FirebaseFirestore.instance
                           .collection('users')
                           .doc(userId)
                           .update({
-                            'teamIds': FieldValue.arrayUnion([widget.teamId]),
+                            'departmentIds': FieldValue.arrayUnion([
+                              widget.departmentId,
+                            ]),
                           });
 
                       Navigator.pop(context);
-                      _loadTeamData(); // Reload data
+                      _loadDepartmentData(); // Reload data
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('User not found')),
@@ -186,7 +188,8 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade800,
+                  backgroundColor: AppColors.navyBlue,
+                  foregroundColor: Colors.white,
                 ),
                 child: const Text('Add'),
               ),
@@ -195,29 +198,66 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
     );
   }
 
+  String _getMemberRole(String memberId) {
+    if (_department!.departmentHeadId == memberId) {
+      return 'Department Head';
+    } else if (_department!.assistantHeadIds.contains(memberId)) {
+      return 'Assistant Head';
+    } else {
+      return 'Member';
+    }
+  }
+
+  bool _canRemoveMember(String memberId) {
+    // Can't remove department head
+    if (_department!.departmentHeadId == memberId) return false;
+
+    // Department head can remove anyone
+    if (_department!.departmentHeadId == _currentUser?.id) return true;
+
+    // Assistant heads can remove regular members only
+    if (_department!.assistantHeadIds.contains(_currentUser?.id)) {
+      return !_department!.assistantHeadIds.contains(memberId);
+    }
+
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Team Details')),
+        appBar: AppBar(
+          title: const Text('Department Details'),
+          backgroundColor: AppColors.navyBlue,
+          foregroundColor: AppColors.white,
+        ),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
-    if (_team == null) {
+    if (_department == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Team Not Found')),
+        appBar: AppBar(
+          title: const Text('Department Not Found'),
+          backgroundColor: AppColors.navyBlue,
+          foregroundColor: AppColors.white,
+        ),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Icon(Icons.error_outline, size: 64, color: Colors.red),
               const SizedBox(height: 16),
-              const Text('Could not load team information'),
+              const Text('Could not load department information'),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () => context.go('/teams'),
-                child: const Text('Back to Teams'),
+                onPressed: () => context.go('/departments'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.navyBlue,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Back to Departments'),
               ),
             ],
           ),
@@ -226,48 +266,71 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
     }
 
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text(_team!.name),
+        title: Text(_department!.name),
+        backgroundColor: AppColors.navyBlue,
+        foregroundColor: AppColors.white,
         actions: [
-          if (_canManageTeam)
+          if (_canManageDepartment)
             IconButton(
               icon: const Icon(Icons.edit),
-              onPressed: () => context.push('/teams/${widget.teamId}/manage'),
+              onPressed:
+                  () => context.push(
+                    '/departments/${widget.departmentId}/manage',
+                  ),
             ),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadTeamData),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadDepartmentData,
+          ),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _loadTeamData,
+        onRefresh: _loadDepartmentData,
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Team Header
+              // Department Header
               Container(
                 width: double.infinity,
-                color: Colors.blue.shade50,
+                color: AppColors.navyBlue.withOpacity(0.1),
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _team!.name,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.business,
+                          size: 32,
+                          color: AppColors.navyBlue,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _department!.name,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_department!.description.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        _department!.description,
+                        style: TextStyle(fontSize: 16, color: Colors.grey[800]),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _team!.description,
-                      style: TextStyle(fontSize: 16, color: Colors.grey[800]),
-                    ),
+                    ],
                   ],
                 ),
               ),
 
-              // Team Members
+              // Department Members
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -277,17 +340,20 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'Team Members',
+                          'Department Members',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        if (_canManageTeam)
+                        if (_canManageDepartment)
                           TextButton.icon(
                             icon: const Icon(Icons.person_add, size: 18),
                             label: const Text('Add'),
                             onPressed: _showAddMemberDialog,
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.navyBlue,
+                            ),
                           ),
                       ],
                     ),
@@ -297,19 +363,29 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                       child: ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _teamMembers.length,
+                        itemCount: _departmentMembers.length,
                         itemBuilder: (context, index) {
-                          final member = _teamMembers[index];
-                          final bool isTeamHead =
-                              member.id == _team!.teamLeaderId;
+                          final member = _departmentMembers[index];
+                          final memberRole = _getMemberRole(member.id);
+                          final isDepartmentHead =
+                              member.id == _department!.departmentHeadId;
+                          final isAssistantHead = _department!.assistantHeadIds
+                              .contains(member.id);
 
                           return ListTile(
                             leading: CircleAvatar(
                               backgroundImage:
-                                  member["profilePictureUrl"] != null
+                                  member["profilePictureUrl"] != null &&
+                                          member["profilePictureUrl"].isNotEmpty
                                       ? NetworkImage(
                                         member["profilePictureUrl"],
                                       )
+                                      : null,
+                              backgroundColor:
+                                  isDepartmentHead
+                                      ? Colors.amber[100]
+                                      : isAssistantHead
+                                      ? Colors.blue[100]
                                       : null,
                               child:
                                   member["profilePictureUrl"] == null ||
@@ -319,13 +395,45 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                                                 member["name"].isNotEmpty
                                             ? member["name"][0].toUpperCase()
                                             : '?',
+                                        style: TextStyle(
+                                          color:
+                                              isDepartmentHead
+                                                  ? Colors.amber[700]
+                                                  : isAssistantHead
+                                                  ? Colors.blue[700]
+                                                  : null,
+                                        ),
                                       )
                                       : null,
                             ),
                             title: Text(member["name"] ?? 'Unknown User'),
-                            subtitle: Text(isTeamHead ? 'Team Head' : 'Member'),
+                            subtitle: Row(
+                              children: [
+                                if (isDepartmentHead)
+                                  Icon(
+                                    Icons.star,
+                                    size: 14,
+                                    color: Colors.amber[700],
+                                  )
+                                else if (isAssistantHead)
+                                  Icon(
+                                    Icons.assistant,
+                                    size: 14,
+                                    color: Colors.blue[700],
+                                  )
+                                else
+                                  Icon(
+                                    Icons.person,
+                                    size: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                const SizedBox(width: 4),
+                                Text(memberRole),
+                              ],
+                            ),
                             trailing:
-                                _canManageTeam && !isTeamHead
+                                _canManageDepartment &&
+                                        _canRemoveMember(member.id)
                                     ? IconButton(
                                       icon: const Icon(
                                         Icons.remove_circle_outline,
@@ -341,7 +449,7 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                                                   'Remove Member',
                                                 ),
                                                 content: Text(
-                                                  'Remove ${member["name"]} from the team?',
+                                                  'Remove ${member["name"]} from the department?',
                                                 ),
                                                 actions: [
                                                   TextButton(
@@ -369,29 +477,45 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                                         );
 
                                         if (confirm == true) {
-                                          // Remove member from team
-                                          await FirebaseFirestore.instance
-                                              .collection('teams')
-                                              .doc(widget.teamId)
-                                              .update({
-                                                'members':
-                                                    FieldValue.arrayRemove([
-                                                      member.id,
-                                                    ]),
-                                              });
+                                          // Remove member from department
+                                          if (isAssistantHead) {
+                                            await FirebaseFirestore.instance
+                                                .collection('departments')
+                                                .doc(widget.departmentId)
+                                                .update({
+                                                  'assistantHeadIds':
+                                                      FieldValue.arrayRemove([
+                                                        member.id,
+                                                      ]),
+                                                  'updatedAt':
+                                                      FieldValue.serverTimestamp(),
+                                                });
+                                          } else {
+                                            await FirebaseFirestore.instance
+                                                .collection('departments')
+                                                .doc(widget.departmentId)
+                                                .update({
+                                                  'members':
+                                                      FieldValue.arrayRemove([
+                                                        member.id,
+                                                      ]),
+                                                  'updatedAt':
+                                                      FieldValue.serverTimestamp(),
+                                                });
+                                          }
 
-                                          // Remove team from user
+                                          // Remove department from user
                                           await FirebaseFirestore.instance
                                               .collection('users')
                                               .doc(member.id)
                                               .update({
-                                                'teamIds':
+                                                'departmentIds':
                                                     FieldValue.arrayRemove([
-                                                      widget.teamId,
+                                                      widget.departmentId,
                                                     ]),
                                               });
 
-                                          _loadTeamData(); // Reload data
+                                          _loadDepartmentData(); // Reload data
                                         }
                                       },
                                     )
@@ -415,7 +539,7 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                     Card(
                       elevation: 2,
                       child:
-                          _teamAnnouncements.isEmpty
+                          _departmentAnnouncements.isEmpty
                               ? const Padding(
                                 padding: EdgeInsets.all(16),
                                 child: Center(
@@ -425,10 +549,10 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                               : ListView.builder(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
-                                itemCount: _teamAnnouncements.length,
+                                itemCount: _departmentAnnouncements.length,
                                 itemBuilder: (context, index) {
                                   final announcement =
-                                      _teamAnnouncements[index];
+                                      _departmentAnnouncements[index];
                                   return ListTile(
                                     title: Text(
                                       announcement['title'] ?? 'Untitled',
@@ -436,7 +560,10 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                                     subtitle: Text(
                                       announcement['content'] ?? '',
                                     ),
-                                    leading: const Icon(Icons.announcement),
+                                    leading: Icon(
+                                      Icons.announcement,
+                                      color: AppColors.navyBlue,
+                                    ),
                                     trailing: Text(
                                       announcement['createdAt'] != null
                                           ? _formatDate(
@@ -467,7 +594,7 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                     Card(
                       elevation: 2,
                       child:
-                          _teamEvents.isEmpty
+                          _departmentEvents.isEmpty
                               ? const Padding(
                                 padding: EdgeInsets.all(16),
                                 child: Center(
@@ -477,18 +604,23 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                               : ListView.builder(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
-                                itemCount: _teamEvents.length,
+                                itemCount: _departmentEvents.length,
                                 itemBuilder: (context, index) {
-                                  final event = _teamEvents[index];
+                                  final event = _departmentEvents[index];
                                   return ListTile(
                                     title: Text(
                                       event['title'] ?? 'Untitled Event',
                                     ),
                                     subtitle: Text(event['description'] ?? ''),
-                                    leading: const Icon(Icons.event),
+                                    leading: Icon(
+                                      Icons.event,
+                                      color: AppColors.navyBlue,
+                                    ),
                                     trailing: Column(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
                                       children: [
                                         Text(
                                           event['date'] != null
@@ -502,20 +634,20 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
                                             fontSize: 12,
                                           ),
                                         ),
-                                        Text(
-                                          event['location'] ?? '',
-                                          style: TextStyle(
-                                            color: Colors.grey[600],
-                                            fontSize: 12,
+                                        if (event['location'] != null &&
+                                            event['location']
+                                                .toString()
+                                                .isNotEmpty)
+                                          Text(
+                                            event['location'],
+                                            style: TextStyle(
+                                              color: Colors.grey[600],
+                                              fontSize: 12,
+                                            ),
                                           ),
-                                        ),
                                       ],
                                     ),
                                     onTap:
-                                        // () => context.push(
-                                        //   '/events/${event['id']}',
-                                        //   extra: event,
-                                        // ),
                                         () => Navigator.push(
                                           context,
                                           MaterialPageRoute(
@@ -557,147 +689,6 @@ class _TeamDetailsViewState extends State<TeamDetailsView> {
       return '${dateTime.month}/${dateTime.day}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
     } else {
       return '${dateTime.month}/${dateTime.day}/${dateTime.year}';
-    }
-  }
-
-  Widget _buildEventDetailsDialog(Map<String, dynamic> event) {
-    final eventDate = event['date'] as Timestamp?;
-    final displayDate = eventDate?.toDate() ?? DateTime.now();
-
-    return AlertDialog(
-      title: Text(
-        event['title'] ?? 'Event Details',
-        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (event['description'] != null &&
-                event['description'].toString().isNotEmpty) ...[
-              const Text(
-                'Description:',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 4),
-              Text(event['description']),
-              const SizedBox(height: 16),
-            ],
-            const Text(
-              'Date & Time:',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.access_time, size: 16, color: Colors.grey),
-                const SizedBox(width: 8),
-                Text(_formatDate(displayDate, showTime: true)),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (event['location'] != null &&
-                event['location'].toString().isNotEmpty) ...[
-              const Text(
-                'Location:',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  const Icon(Icons.location_on, size: 16, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(event['location'])),
-                ],
-              ),
-              const SizedBox(height: 16),
-            ],
-            // Attendance Section
-            const Text(
-              'Will you attend this event?',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      _updateEventAttendance(event['id'], 'attending');
-                      Navigator.of(context).pop();
-                    },
-                    icon: const Icon(Icons.check_circle),
-                    label: const Text('Attending'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      _updateEventAttendance(event['id'], 'not_attending');
-                      Navigator.of(context).pop();
-                    },
-                    icon: const Icon(Icons.cancel),
-                    label: const Text('Not Attending'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _updateEventAttendance(String eventId, String status) async {
-    try {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) return;
-
-      final attendanceCollection = FirebaseFirestore.instance
-          .collection('events')
-          .doc(eventId)
-          .collection('attendance');
-
-      await attendanceCollection.doc(currentUser.uid).set({
-        'userId': currentUser.uid,
-        'status': status,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            status == 'attending'
-                ? 'Marked as attending!'
-                : 'Marked as not attending.',
-          ),
-          backgroundColor: status == 'attending' ? Colors.green : Colors.red,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating attendance: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 }
