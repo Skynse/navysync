@@ -69,10 +69,7 @@ class _TeamsViewState extends State<TeamsView> {
       appBar: AppBar(
         title: const Text(
           'Teams',
-          style: TextStyle(
-            color: AppColors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: AppColors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: AppColors.navyBlue,
         elevation: 2,
@@ -290,15 +287,15 @@ class _TeamsViewState extends State<TeamsView> {
           );
         },
       ),
-      floatingActionButton:
-          _canCreateTeam()
-              ? FloatingActionButton(
-                onPressed: _showCreateTeamDialog,
-                backgroundColor: AppColors.navyBlue,
-                foregroundColor: Colors.white,
-                child: const Icon(Icons.add),
-              )
-              : null,
+      // floatingActionButton:
+      //     _canCreateTeam()
+      //         ? FloatingActionButton(
+      //           onPressed: _showCreateTeamDialog,
+      //           backgroundColor: AppColors.navyBlue,
+      //           foregroundColor: Colors.white,
+      //           child: const Icon(Icons.add),
+      //         )
+      //         : null,
     );
   }
 }

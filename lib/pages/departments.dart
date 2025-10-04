@@ -321,15 +321,15 @@ class _DepartmentsViewState extends State<DepartmentsView> {
           );
         },
       ),
-      floatingActionButton:
-          _canCreateDepartment()
-              ? FloatingActionButton(
-                onPressed: _showCreateDepartmentDialog,
-                backgroundColor: AppColors.navyBlue,
-                foregroundColor: Colors.white,
-                child: const Icon(Icons.add),
-              )
-              : null,
+      // floatingActionButton:
+      //     _canCreateDepartment()
+      //         ? FloatingActionButton(
+      //           onPressed: _showCreateDepartmentDialog,
+      //           backgroundColor: AppColors.navyBlue,
+      //           foregroundColor: Colors.white,
+      //           child: const Icon(Icons.add),
+      //         )
+      //         : null,
     );
   }
 }

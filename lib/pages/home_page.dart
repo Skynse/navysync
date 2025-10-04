@@ -889,10 +889,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   onPressed: () => context.push('/learn'),
                   tooltip: 'Learn!',
                 ),
-                IconButton(
-                  icon: Icon(Icons.calendar_month, color: Colors.white),
-                  onPressed: () => context.push('/calendar'),
-                ),
+
                 SizedBox(width: 16),
               ],
             ),
